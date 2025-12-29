@@ -35,7 +35,12 @@ jobs:
         run: flutter pub get
 
       - name: Run unit tests
-        run: flutter test --coverage
+        run: |
+          echo "Flutter version and doctor"
+          flutter --version
+          flutter doctor -v
+          echo "Running unit tests"
+          flutter test --coverage -r expanded
 
       # Optional: run emulators and integration tests (commented by default)
       - name: Set up Java (for Firestore emulator)

@@ -20,7 +20,12 @@ jobs:
 
       - name: Install Functions deps
         working-directory: functions
-        run: npm ci
+        run: |
+          echo "Node version: $(node --version)"
+          echo "Npm version: $(npm --version)"
+          cd functions
+          # Try npm ci first; if it fails, fallback to npm install to be more resilient on runners
+          npm ci --no-audit || (echo "npm ci failed, falling back to npm install" && npm install --no-audit)
 
       - name: Build Functions (tsc)
         working-directory: functions

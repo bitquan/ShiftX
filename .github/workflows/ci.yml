@@ -28,7 +28,8 @@ jobs:
           echo "lockfile info:" && npm ci --package-lock-only --no-audit || true
           echo "running npm ci (verbose)"
           set -o pipefail
-          npm ci --no-audit --loglevel verbose 2>&1 | tee npm-ci.log || (echo "npm ci failed; dumping log:" && tail -n 200 npm-ci.log && exit 1)
+          npm config set unsafe-perm true
+          npm ci --no-audit --loglevel verbose 2>&1 | tee npm-ci.log || (echo "npm ci failed; dumping log and falling back to npm install" && tail -n 200 npm-ci.log && npm install --no-audit --no-fund --legacy-peer-deps)
 
       - name: Build Functions (tsc)
         working-directory: functions

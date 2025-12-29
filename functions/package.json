@@ -35,8 +35,8 @@
     "lint": "eslint --ext .ts src",
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
-    "test:rules": "mocha -r ts-node/register 'test/**/*.test.ts' --exit",
-    "test:functions": "mocha -r ts-node/register 'test/**/*.unit.test.ts' 'test/driver.unit.test.ts' --exit"
+    "test:rules": "npx mocha -r ts-node/register 'test/**/*.test.ts' --exit",
+    "test:functions": "npx mocha -r ts-node/register 'test/**/*.unit.test.ts' 'test/driver.unit.test.ts' --exit"
   },
   "overrides": {
     "minimatch": "3.0.6",

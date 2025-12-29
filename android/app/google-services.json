@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "928827778230",
+    "project_id": "shiftx-95c4b",
+    "storage_bucket": "shiftx-95c4b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:928827778230:android:bbd7bd69aa4b7f1a22f217",
+        "android_client_info": {
+          "package_name": "com.example.shiftx"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFf0ild8hOCn0rulXgytENqljtw198S7Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:928827778230:android:8eac31459e7d621322f217",
+        "android_client_info": {
+          "package_name": "com.example.shiftx_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFf0ild8hOCn0rulXgytENqljtw198S7Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

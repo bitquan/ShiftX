@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Functions deps
+        working-directory: functions
+        run: npm ci
+
+      - name: Build Functions (tsc)
+        working-directory: functions
+        run: npm run build
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install Flutter deps
+        run: flutter pub get
+
+      - name: Run unit tests
+        run: flutter test --coverage
+
+      # Optional: run emulators and integration tests (commented by default)
+      - name: Set up Java (for Firestore emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Install Firebase CLI
+        run: curl -sL https://firebase.tools | bash
+
+      - name: Start Firebase emulators (functions + firestore)
+        run: |
+          firebase emulators:start --only functions,firestore &
+          # Give emulators a moment to start up
+          sleep 5
+
+      - name: Run integration tests (emulator)
+        run: flutter test test/integration/ride_integration_test.dart -r expanded
+
+  emulator-tests:
+    name: Emulator tests (Firestore rules + Functions)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    timeout-minutes: 30
+    env:
+      GCLOUD_PROJECT: demo-no-project
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Java (required by Firestore emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Firebase CLI
+        run: curl -sL https://firebase.tools | bash
+
+      - name: Run emulator-based tests (Firestore rules + Functions unit tests)
+        run: npx firebase emulators:exec --only firestore,functions "cd functions && npm ci && npm run build && npm run test:rules && npm run test:functions"
+

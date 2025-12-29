@@ -1,0 +1,66 @@
+{
+  // VS Code launch configurations for ShiftX
+  // - Use the "Dev (Debug)" config while developing (hot reload, full debugger)
+  // - Use the "Prod (Release)" config to run a release build on device
+  // - Use the "Dev (Debug, ENV=dev)" to pass a dart-define for environment-specific flags
+  // - Use test configs to run/debug unit tests from the editor
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ShiftX: Dev (Debug)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "program": "lib/main.dart"
+    },
+    {
+      "name": "ShiftX: Dev (With Emulators)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "program": "lib/main.dart",
+      "preLaunchTask": "Start Firebase emulators",
+      "args": ["--dart-define=USE_EMULATORS=true"]
+    },
+    {
+      "name": "ShiftX: Dev (Debug, ENV=dev)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=ENV=dev"]
+    },
+    {
+      "name": "ShiftX: Prod (Release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=ENV=prod"]
+    },
+    {
+      "name": "ShiftX: Profile",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile",
+      "program": "lib/main.dart"
+    },
+    {
+      "name": "Attach to Flutter (running app)",
+      "request": "attach",
+      "type": "dart"
+    },
+    {
+      "name": "Test: All",
+      "request": "launch",
+      "type": "dart",
+      "program": "test/all_tests.dart"
+    },
+    {
+      "name": "Test: RideService",
+      "request": "launch",
+      "type": "dart",
+      "program": "test/ride_service_test.dart"
+    }
+  ]
+}

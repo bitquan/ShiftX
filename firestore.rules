@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // USERS
+    match /users/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // DRIVERS
+    match /drivers/{driverId} {
+      // Clients may read driver docs when signed in.
+      allow read: if isSignedIn();
+
+      // Prevent clients from writing authoritative driver fields.
+      // All changes to isBusy, currentRideId, isOnline, and timestamps
+      // must be performed through Cloud Functions (server-authoritative).
+      allow write: if false;
+    }
+
+    // RIDES
+    match /rides/{rideId} {
+      allow read: if isSignedIn();
+
+      // Allow riders to create ride requests with initial status 'requested' only.
+      allow create: if isSignedIn()
+        && request.resource.data.riderId == request.auth.uid
+        && request.resource.data.status == 'requested';
+
+      // Disallow clients from changing authoritative ride state fields.
+      // The server (Cloud Functions / Admin SDK) should perform state transitions.
+      allow update: if isSignedIn()
+        // allow updates only if the following protected fields are unchanged
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.driverId == resource.data.driverId
+        && request.resource.data.acceptedAtMs == resource.data.acceptedAtMs
+        && request.resource.data.startedAtMs == resource.data.startedAtMs
+        && request.resource.data.completedAtMs == resource.data.completedAtMs
+        && request.resource.data.cancelledAtMs == resource.data.cancelledAtMs
+        // allow owner to update non-authoritative fields (e.g., pickup/dropoff)
+        && request.auth.uid == resource.data.riderId;
+    }
+  }
+}

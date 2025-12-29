@@ -9,6 +9,8 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
@@ -61,6 +63,7 @@ jobs:
     timeout-minutes: 30
     env:
       GCLOUD_PROJECT: demo-no-project
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -80,15 +83,27 @@ jobs:
       - name: Install Firebase CLI
         run: curl -sL https://firebase.tools | bash
 
+      - name: Prepare Functions (install deps & build)
+        run: |
+          echo "Preparing functions: install deps and build"
+          cd "$GITHUB_WORKSPACE/functions"
+          npm ci --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-ci.log
+          cat npm-ci.log
+          npm run build
+
       - name: Run emulator-based tests (Firestore rules + Functions unit tests)
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
           echo "Listing workspace root:"
           ls -la "$GITHUB_WORKSPACE" || true
           echo "Listing functions dir:"
           ls -la "$GITHUB_WORKSPACE/functions" || true
+          echo "Listing functions build output:"
+          ls -la "$GITHUB_WORKSPACE/functions/lib" || true
 
-          npx firebase emulators:exec --only firestore,functions "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm ci --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-ci.log && cat npm-ci.log && npm run build && npm run test:rules && npm run test:functions'"
+          npx firebase emulators:exec --only firestore,functions "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm run test:rules && npm run test:functions'"
 
       - name: Upload Functions npm log (on failure)
         if: failure()

@@ -88,7 +88,22 @@ jobs:
           echo "Listing functions dir:"
           ls -la "$GITHUB_WORKSPACE/functions" || true
 
-          # Use an absolute path inside the emulators shell to avoid issues where the subshell's working directory
-          # is different from the runner workspace. Wrap test commands in bash -lc so env vars expand inside the emulators exec.
-          npx firebase emulators:exec --only firestore,functions "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm ci --no-audit --no-fund --legacy-peer-deps && npm run build && npm run test:rules && npm run test:functions'"
+          npx firebase emulators:exec --only firestore,functions "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm ci --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-ci.log && cat npm-ci.log && npm run build && npm run test:rules && npm run test:functions'"
+
+      - name: Upload Functions npm log (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: functions-npm-ci-log
+          path: functions/npm-ci.log
+
+      - name: Upload Firebase emulator logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firebase-emulator-logs
+          path: |
+            firebase-debug.log
+            firestore-debug.log
+            functions/firebase-debug.log
 

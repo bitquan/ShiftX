@@ -81,5 +81,14 @@ jobs:
         run: curl -sL https://firebase.tools | bash
 
       - name: Run emulator-based tests (Firestore rules + Functions unit tests)
-        run: npx firebase emulators:exec --only firestore,functions "cd functions && npm ci && npm run build && npm run test:rules && npm run test:functions"
+        run: |
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          echo "Listing workspace root:"
+          ls -la "$GITHUB_WORKSPACE" || true
+          echo "Listing functions dir:"
+          ls -la "$GITHUB_WORKSPACE/functions" || true
+
+          # Use an absolute path inside the emulators shell to avoid issues where the subshell's working directory
+          # is different from the runner workspace. Wrap test commands in bash -lc so env vars expand inside the emulators exec.
+          npx firebase emulators:exec --only firestore,functions "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm ci --no-audit --no-fund --legacy-peer-deps && npm run build && npm run test:rules && npm run test:functions'"
 

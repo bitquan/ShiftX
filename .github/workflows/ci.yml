@@ -18,22 +18,6 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install Functions deps
-        working-directory: functions
-        run: |
-          echo "Node version: $(node --version)"
-          echo "Npm version: $(npm --version)"
-          cd functions
-          echo "package.json:" && cat package.json
-          echo "lockfile info:" && npm ci --package-lock-only --no-audit || true
-          echo "running npm ci (verbose)"
-          set -o pipefail
-          npm config set unsafe-perm true
-          npm ci --no-audit --loglevel verbose 2>&1 | tee npm-ci.log || (echo "npm ci failed; dumping log and falling back to npm install" && tail -n 200 npm-ci.log && npm install --no-audit --no-fund --legacy-peer-deps)
-
-      - name: Build Functions (tsc)
-        working-directory: functions
-        run: npm run build
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2

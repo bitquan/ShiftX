@@ -106,6 +106,8 @@ jobs:
         run: |
           mkdir -p build-npm-debug-logs || true
           cp /home/runner/.npm/_logs/*.log build-npm-debug-logs/ 2>/dev/null || true
+          cp firebase-debug.log build-npm-debug-logs/ 2>/dev/null || true
+          cp functions/firestore-debug.log build-npm-debug-logs/ 2>/dev/null || true
           ls -la build-npm-debug-logs || true
 
       - name: Upload Build npm debug logs (on failure)

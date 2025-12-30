@@ -33,6 +33,11 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Node
+node_modules/
+**/node_modules/
+packages/*/node_modules/
+
 # Symbolication related
 app.*.symbols
 

@@ -10,7 +10,7 @@
     "test:functions": "npx mocha -r ts-node/register 'test/**/*.unit.test.ts' 'test/driver.unit.test.ts' --exit"
   },
   "engines": {
-    "node": ">=18"
+    "node": "20"
   },
   "main": "lib/index.js",
   "dependencies": {

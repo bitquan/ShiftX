@@ -67,6 +67,13 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
+          echo "Verifying functions build output before starting emulators"
+          echo "functions/package.json:" && cat "$GITHUB_WORKSPACE/functions/package.json"
+          if [ ! -f "$GITHUB_WORKSPACE/functions/lib/index.js" ]; then
+            echo "ERROR: functions/lib/index.js missing; build did not produce output. Listing files:" && ls -la "$GITHUB_WORKSPACE/functions" || true
+            exit 1
+          fi
+
           firebase emulators:start --only functions,firestore &
           # Give emulators a moment to start up
           sleep 5
@@ -118,6 +125,13 @@ jobs:
           [ -f npm-install.log ] && cat npm-install.log || true
 
           npm run build
+
+          echo "Checking functions build output"
+          if [ ! -f "$GITHUB_WORKSPACE/functions/lib/index.js" ]; then
+            echo "ERROR: functions/lib/index.js missing after build. Listing functions dir:" && ls -la "$GITHUB_WORKSPACE/functions" || true
+            exit 1
+          fi
+          echo "functions/lib/index.js exists"
 
       - name: Run rules tests in emulator
         env:

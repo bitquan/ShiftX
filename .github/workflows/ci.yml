@@ -20,6 +20,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
 
 
       - name: Set up Flutter
@@ -56,7 +58,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/functions"
 
           set -o pipefail
-          npm ci --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-install.log)
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
 
           ls -la node_modules || true
           [ -f npm-ci.log ] && cat npm-ci.log || true
@@ -72,7 +74,7 @@ jobs:
             -- bash -lc '
               set -e
               cd functions
-              npm ci
+              npm ci --no-audit --no-fund
               npm run build
               npm run test:rules
               npm run test:functions
@@ -110,6 +112,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
 
       - name: Setup Java (required by Firestore emulator)
         uses: actions/setup-java@v4
@@ -128,7 +132,7 @@ jobs:
 
           # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
           set -o pipefail
-          npm ci --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-install.log)
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
 
           # Show what we installed for diagnostics
           ls -la node_modules || true
@@ -158,7 +162,7 @@ jobs:
             -- bash -lc '
               set -e
               cd functions
-              npm ci
+              npm ci --no-audit --no-fund
               npm run build
               npm run test:rules
               npm run test:functions

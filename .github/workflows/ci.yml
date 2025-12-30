@@ -68,25 +68,38 @@ jobs:
 
       - name: Emulator tests (Firestore rules + Functions)
         run: |
-          firebase emulators:exec \
-            --config firebase.ci.json \
-            --only firestore,functions \
-            -- bash -lc '
-              set -e
-              cd packages/rules-tests
+          set -euo pipefail
 
-              # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
-              npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          echo "Starting local emulators in background (logs => firebase-debug.log)"
+          firebase emulators:start --config firebase.ci.json --only firestore,functions > firebase-debug.log 2>&1 &
+          echo $! > emu.pid
 
-              npm test
-              cd ../functions
+          # Wait for emulator to be healthy (firestore REST health check)
+          echo "Waiting for Firestore emulator to be ready..."
+          for i in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8081/emulator/v1/projects/demo-no-project:getRules 2>/dev/null; then
+              echo "Firestore emulator ready"
+              break
+            fi
+            sleep 1
+          done
 
-              # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
-              npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          echo "Running rules tests (packages/rules-tests)"
+          cd packages/rules-tests
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          npm test 2>&1 | tee test.log || (echo 'Rules tests failed' && cat test.log && false)
 
-              npm run build
-              npm run test:functions
-            '
+          echo "Running functions tests (functions)"
+          cd ../functions
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          npm run build 2>&1 | tee build.log
+          npm run test:functions 2>&1 | tee functions-test.log || (echo 'Functions tests failed' && tail -n 200 functions-test.log && false)
+
+          echo "Shutting down emulators"
+          kill "$(cat ../emu.pid)" || true
+          rm -f ../emu.pid
+          sleep 1
+
 
       - name: Collect global npm debug logs (build job) (on failure)
         if: failure()
@@ -164,25 +177,38 @@ jobs:
 
       - name: Emulator tests (Firestore rules + Functions)
         run: |
-          firebase emulators:exec \
-            --config firebase.ci.json \
-            --only firestore,functions \
-            -- bash -lc '
-              set -e
-              cd packages/rules-tests
+          set -euo pipefail
 
-              # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
-              npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          echo "Starting local emulators in background (logs => firebase-debug.log)"
+          firebase emulators:start --config firebase.ci.json --only firestore,functions > firebase-debug.log 2>&1 &
+          echo $! > emu.pid
 
-              npm test
-              cd ../functions
+          # Wait for emulator to be healthy (firestore REST health check)
+          echo "Waiting for Firestore emulator to be ready..."
+          for i in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8081/emulator/v1/projects/demo-no-project:getRules 2>/dev/null; then
+              echo "Firestore emulator ready"
+              break
+            fi
+            sleep 1
+          done
 
-              # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
-              npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          echo "Running rules tests (packages/rules-tests)"
+          cd packages/rules-tests
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          npm test 2>&1 | tee test.log || (echo 'Rules tests failed' && cat test.log && false)
 
-              npm run build
-              npm run test:functions
-            '
+          echo "Running functions tests (functions)"
+          cd ../functions
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          npm run build 2>&1 | tee build.log
+          npm run test:functions 2>&1 | tee functions-test.log || (echo 'Functions tests failed' && tail -n 200 functions-test.log && false)
+
+          echo "Shutting down emulators"
+          kill "$(cat ../emu.pid)" || true
+          rm -f ../emu.pid
+          sleep 1
+
 
       - name: Collect global npm debug logs (on failure)
         if: failure()

@@ -3,7 +3,7 @@
     "source": "functions"
   },
   "emulators": {
-    "firestore": { "port": 8080 },
+    "firestore": { "port": 8081 },
     "functions": { "port": 5001 }
   }
 }

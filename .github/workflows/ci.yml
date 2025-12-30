@@ -87,8 +87,16 @@ jobs:
         run: |
           echo "Preparing functions: install deps and build"
           cd "$GITHUB_WORKSPACE/functions"
-          npm ci --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-ci.log
-          cat npm-ci.log
+
+          # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
+          set -o pipefail
+          npm ci --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-install.log)
+
+          # Show what we installed for diagnostics
+          ls -la node_modules || true
+          [ -f npm-ci.log ] && cat npm-ci.log || true
+          [ -f npm-install.log ] && cat npm-install.log || true
+
           npm run build
 
       - name: Run emulator-based tests (Firestore rules + Functions unit tests)
@@ -105,12 +113,14 @@ jobs:
 
           npx firebase emulators:exec --only firestore,functions "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm run test:rules && npm run test:functions'"
 
-      - name: Upload Functions npm log (on failure)
+      - name: Upload Functions npm logs (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: functions-npm-ci-log
-          path: functions/npm-ci.log
+          name: functions-npm-logs
+          path: |
+            functions/npm-ci.log
+            functions/npm-install.log
 
       - name: Upload Firebase emulator logs (on failure)
         if: failure()

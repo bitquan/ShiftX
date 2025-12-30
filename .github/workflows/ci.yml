@@ -136,21 +136,20 @@ jobs:
           echo "Listing functions/lib contents:" && ls -la "$GITHUB_WORKSPACE/functions/lib" || true
           echo "Build log (last 50 lines):" && tail -n 50 build.log || true
 
-      - name: Run rules tests in emulator
+      - name: Emulator tests (Firestore rules + Functions)
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           echo "Node: $(node --version)"; echo "npm: $(npm --version)"
           echo "Listing functions bin:"; ls -la "$GITHUB_WORKSPACE/functions/node_modules/.bin" || true
-          npx firebase emulators:exec --only firestore "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm run test:rules'"
 
-      - name: Run Functions unit tests in emulator
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: |
-          echo "Node: $(node --version)"; echo "npm: $(npm --version)"
-          echo "Listing functions bin:"; ls -la "$GITHUB_WORKSPACE/functions/node_modules/.bin" || true
-          npx firebase emulators:exec --only functions,firestore "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm run test:functions'"
+          npx firebase emulators:exec --only firestore,functions -- bash -lc "
+            cd \"$GITHUB_WORKSPACE/functions\" &&
+            npm ci --no-audit --no-fund --legacy-peer-deps &&
+            npm run build &&
+            npm run test:rules &&
+            npm run test:functions
+          "
 
       - name: Upload Functions npm logs (on failure)
         if: failure()

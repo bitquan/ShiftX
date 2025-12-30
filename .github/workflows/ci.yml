@@ -64,19 +64,19 @@ jobs:
 
           npm run build
 
-      - name: Run integration tests under emulators:exec
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      - name: Emulator tests (Firestore rules + Functions)
         run: |
-          echo "Verifying functions build output before running emulators:exec"
-          echo "functions/package.json:" && cat "$GITHUB_WORKSPACE/functions/package.json"
-          if [ ! -f "$GITHUB_WORKSPACE/functions/lib/index.js" ]; then
-            echo "ERROR: functions/lib/index.js missing; build did not produce output. Listing files:" && ls -la "$GITHUB_WORKSPACE/functions" || true
-            exit 1
-          fi
-
-          echo "Running emulators:exec to run Functions tests and Flutter integration test"
-          npx firebase emulators:exec --only functions,firestore "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && \"$GITHUB_WORKSPACE/functions/node_modules/.bin/mocha\" -r ts-node/register \"test/**/*.unit.test.ts\" \"test/driver.unit.test.ts\" --exit && cd \"$GITHUB_WORKSPACE\" && flutter test test/integration/ride_integration_test.dart -r expanded'"
+          firebase emulators:exec \
+            --config firebase.ci.json \
+            --only firestore,functions \
+            -- bash -lc '
+              set -e
+              cd functions
+              npm ci
+              npm run build
+              npm run test:rules
+              npm run test:functions
+            '
 
       - name: Collect global npm debug logs (build job) (on failure)
         if: failure()
@@ -151,20 +151,18 @@ jobs:
           echo "Build log (last 50 lines):" && tail -n 50 build.log || true
 
       - name: Emulator tests (Firestore rules + Functions)
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          echo "Node: $(node --version)"; echo "npm: $(npm --version)"
-          echo "Listing functions bin:"; ls -la "$GITHUB_WORKSPACE/functions/node_modules/.bin" || true
-
-          npx firebase emulators:exec --only firestore,functions -- bash -lc '
-            set -e
-            cd "$GITHUB_WORKSPACE/functions"
-            npm ci --no-audit --no-fund --legacy-peer-deps
-            npm run build
-            npm run test:rules
-            npm run test:functions
-          '
+          firebase emulators:exec \
+            --config firebase.ci.json \
+            --only firestore,functions \
+            -- bash -lc '
+              set -e
+              cd functions
+              npm ci
+              npm run build
+              npm run test:rules
+              npm run test:functions
+            '
 
       - name: Collect global npm debug logs (on failure)
         if: failure()

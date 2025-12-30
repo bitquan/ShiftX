@@ -18,6 +18,7 @@ describe('Cloud Functions unit tests', function () {
   beforeEach(async () => {
     // Import handlers after ensuring emulator env is set
     // Import compiled JS from lib/ to avoid ts-node ESM resolution issues.
+    // @ts-ignore: import compiled JS build without type declarations
     const mod = await import('../lib/index.js');
     acceptRideHandler = mod.acceptRideHandler;
     startRideHandler = mod.startRideHandler;
@@ -26,7 +27,7 @@ describe('Cloud Functions unit tests', function () {
     // Initialize admin (should connect to the emulator via env var)
     try {
       if (!getApps().length) initializeApp({ projectId: process.env.GCLOUD_PROJECT });
-    } catch (e) {
+    } catch (e: any) {
       // already initialized
     }
     db = getFirestore();
@@ -79,8 +80,8 @@ describe('Cloud Functions unit tests', function () {
     const ctx2 = { auth: { uid: 'd2' } } as any as functions.https.CallableContext;
 
     // Run both accept attempts in parallel
-    const p1 = acceptRideHandler({ rideId: 'r1' }, ctx1, db).then(() => ({ ok: true, driver: 'd1' })).catch((e) => ({ ok: false, err: e, driver: 'd1' }));
-    const p2 = acceptRideHandler({ rideId: 'r1' }, ctx2, db).then(() => ({ ok: true, driver: 'd2' })).catch((e) => ({ ok: false, err: e, driver: 'd2' }));
+    const p1 = acceptRideHandler({ rideId: 'r1' }, ctx1, db).then(() => ({ ok: true, driver: 'd1' })).catch((e: any) => ({ ok: false, err: e, driver: 'd1' }));
+    const p2 = acceptRideHandler({ rideId: 'r1' }, ctx2, db).then(() => ({ ok: true, driver: 'd2' })).catch((e: any) => ({ ok: false, err: e, driver: 'd2' }));
 
     const results = await Promise.all([p1, p2]);
 

@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import { expect } from 'chai';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 
 describe('Firestore rules (rides)', function () {

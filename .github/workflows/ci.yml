@@ -63,25 +63,19 @@ jobs:
 
           npm run build
 
-      - name: Start Firebase emulators (functions + firestore)
+      - name: Run integration tests under emulators:exec
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          echo "Verifying functions build output before starting emulators"
+          echo "Verifying functions build output before running emulators:exec"
           echo "functions/package.json:" && cat "$GITHUB_WORKSPACE/functions/package.json"
           if [ ! -f "$GITHUB_WORKSPACE/functions/lib/index.js" ]; then
             echo "ERROR: functions/lib/index.js missing; build did not produce output. Listing files:" && ls -la "$GITHUB_WORKSPACE/functions" || true
             exit 1
           fi
 
-          firebase emulators:start --only functions,firestore &
-          # Give emulators a moment to start up
-          sleep 5
-          echo "Listing functions build output:"
-          ls -la "$GITHUB_WORKSPACE/functions/lib" || true
-
-      - name: Run integration tests (emulator)
-        run: flutter test test/integration/ride_integration_test.dart -r expanded
+          echo "Running emulators:exec to run Functions tests and Flutter integration test"
+          npx firebase emulators:exec --only functions,firestore "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm run test:functions && cd \"$GITHUB_WORKSPACE\" && flutter test test/integration/ride_integration_test.dart -r expanded'"
 
   emulator-tests:
     name: Emulator tests (Firestore rules + Functions)

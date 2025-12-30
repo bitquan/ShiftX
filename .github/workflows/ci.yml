@@ -124,14 +124,19 @@ jobs:
           [ -f npm-ci.log ] && cat npm-ci.log || true
           [ -f npm-install.log ] && cat npm-install.log || true
 
-          npm run build
+          # Capture build output for diagnostics
+          npm run build 2>&1 | tee build.log
 
           echo "Checking functions build output"
           if [ ! -f "$GITHUB_WORKSPACE/functions/lib/index.js" ]; then
             echo "ERROR: functions/lib/index.js missing after build. Listing functions dir:" && ls -la "$GITHUB_WORKSPACE/functions" || true
+            echo "Listing functions/lib contents:" && ls -la "$GITHUB_WORKSPACE/functions/lib" || true
+            echo "Searching for index.js files in repo:" && find "$GITHUB_WORKSPACE/functions" -maxdepth 3 -type f -name 'index.js' -ls || true
+            echo "Build log (last 200 lines):" && tail -n 200 build.log || true
             exit 1
           fi
           echo "functions/lib/index.js exists"
+          echo "Build log (last 50 lines):" && tail -n 50 build.log || true
 
       - name: Run rules tests in emulator
         env:

@@ -1,6 +1,5 @@
 import { expect } from 'chai';
 import 'mocha';
-import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
@@ -21,7 +20,9 @@ describe('Driver lifecycle (server authoritative)', function () {
   let db: any;
 
   before(async () => {
-    testEnv = await initializeTestEnvironment({ projectId: process.env.GCLOUD_PROJECT, firestore: { host: '127.0.0.1', port: 8080, rules: '' } });
+    // Ensure emulator env vars
+    process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+    process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'demo-no-project';
     // import compiled functions
     // @ts-ignore: import compiled JS build without type declarations
     const mod = await import('../lib/index.js');
@@ -43,7 +44,7 @@ describe('Driver lifecycle (server authoritative)', function () {
   });
 
   after(async () => {
-    await testEnv.cleanup();
+    // no special cleanup required; emulator lifecycle handled by CI
   });
 
   it('driver can go online when idle and cannot go offline while busy', async () => {

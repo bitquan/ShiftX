@@ -23,6 +23,7 @@ describe('Driver lifecycle (server authoritative)', function () {
   before(async () => {
     testEnv = await initializeTestEnvironment({ projectId: process.env.GCLOUD_PROJECT, firestore: { host: '127.0.0.1', port: 8080, rules: '' } });
     // import compiled functions
+    // @ts-ignore: import compiled JS build without type declarations
     const mod = await import('../lib/index.js');
     setDriverOnlineHandler = mod.setDriverOnlineHandler;
     driverHeartbeatHandler = mod.driverHeartbeatHandler;
@@ -36,9 +37,9 @@ describe('Driver lifecycle (server authoritative)', function () {
     db = getFirestore();
     // clean
     const drivers = await db.collection('drivers').listDocuments();
-    await Promise.all(drivers.map((d) => d.delete()));
+    await Promise.all(drivers.map((d: any) => d.delete()));
     const rides = await db.collection('rides').listDocuments();
-    await Promise.all(rides.map((d) => d.delete()));
+    await Promise.all(rides.map((d: any) => d.delete()));
   });
 
   after(async () => {

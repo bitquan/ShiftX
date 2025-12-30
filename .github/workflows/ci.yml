@@ -99,19 +99,21 @@ jobs:
 
           npm run build
 
-      - name: Run emulator-based tests (Firestore rules + Functions unit tests)
+      - name: Run rules tests in emulator
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
-          echo "Listing workspace root:"
-          ls -la "$GITHUB_WORKSPACE" || true
-          echo "Listing functions dir:"
-          ls -la "$GITHUB_WORKSPACE/functions" || true
-          echo "Listing functions build output:"
-          ls -la "$GITHUB_WORKSPACE/functions/lib" || true
+          echo "Node: $(node --version)"; echo "npm: $(npm --version)"
+          echo "Listing functions bin:"; ls -la "$GITHUB_WORKSPACE/functions/node_modules/.bin" || true
+          npx firebase emulators:exec --only firestore "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm run test:rules'"
 
-          npx firebase emulators:exec --only firestore,functions "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm run test:rules && npm run test:functions'"
+      - name: Run Functions unit tests in emulator
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          echo "Node: $(node --version)"; echo "npm: $(npm --version)"
+          echo "Listing functions bin:"; ls -la "$GITHUB_WORKSPACE/functions/node_modules/.bin" || true
+          npx firebase emulators:exec --only functions,firestore "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm run test:functions'"
 
       - name: Upload Functions npm logs (on failure)
         if: failure()

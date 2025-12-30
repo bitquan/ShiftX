@@ -78,6 +78,20 @@ jobs:
           echo "Running emulators:exec to run Functions tests and Flutter integration test"
           npx firebase emulators:exec --only functions,firestore "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && \"$GITHUB_WORKSPACE/functions/node_modules/.bin/mocha\" -r ts-node/register \"test/**/*.unit.test.ts\" \"test/driver.unit.test.ts\" --exit && cd \"$GITHUB_WORKSPACE\" && flutter test test/integration/ride_integration_test.dart -r expanded'"
 
+      - name: Collect global npm debug logs (build job) (on failure)
+        if: failure()
+        run: |
+          mkdir -p build-npm-debug-logs || true
+          cp /home/runner/.npm/_logs/*.log build-npm-debug-logs/ 2>/dev/null || true
+          ls -la build-npm-debug-logs || true
+
+      - name: Upload Build npm debug logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-npm-debug-logs
+          path: build-npm-debug-logs/**
+
   emulator-tests:
     name: Emulator tests (Firestore rules + Functions)
     runs-on: ubuntu-latest

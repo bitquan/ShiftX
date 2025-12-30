@@ -76,7 +76,7 @@ jobs:
           fi
 
           echo "Running emulators:exec to run Functions tests and Flutter integration test"
-          npx firebase emulators:exec --only functions,firestore "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npx mocha -r ts-node/register \"test/**/*.unit.test.ts\" \"test/driver.unit.test.ts\" --exit && cd \"$GITHUB_WORKSPACE\" && flutter test test/integration/ride_integration_test.dart -r expanded'"
+          npx firebase emulators:exec --only functions,firestore "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && \"$GITHUB_WORKSPACE/functions/node_modules/.bin/mocha\" -r ts-node/register \"test/**/*.unit.test.ts\" \"test/driver.unit.test.ts\" --exit && cd \"$GITHUB_WORKSPACE\" && flutter test test/integration/ride_integration_test.dart -r expanded'"
 
   emulator-tests:
     name: Emulator tests (Firestore rules + Functions)

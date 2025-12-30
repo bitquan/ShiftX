@@ -74,11 +74,11 @@ jobs:
           firebase emulators:start --config firebase.ci.json --only firestore,functions > firebase-debug.log 2>&1 &
           echo $! > emu.pid
 
-          # Wait for emulator to be healthy (firestore REST health check)
-          echo "Waiting for Firestore emulator to be ready..."
-          for i in $(seq 1 30); do
-            if curl --silent --fail http://127.0.0.1:8081/emulator/v1/projects/demo-no-project:getRules 2>/dev/null; then
-              echo "Firestore emulator ready"
+          # Wait for the emulators to print "All emulators ready!" into firebase-debug.log
+          echo "Waiting for emulators to be ready (polling firebase-debug.log)..."
+          for i in $(seq 1 60); do
+            if grep -q "All emulators ready!" firebase-debug.log 2>/dev/null; then
+              echo "Emulators ready"
               break
             fi
             sleep 1

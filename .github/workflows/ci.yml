@@ -113,6 +113,7 @@ jobs:
       - name: Prepare Functions (install deps & build)
         run: |
           echo "Preparing functions: install deps and build"
+          echo "Node: $(node --version)"; echo "npm: $(npm --version)"
           cd "$GITHUB_WORKSPACE/functions"
 
           # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
@@ -136,6 +137,7 @@ jobs:
             exit 1
           fi
           echo "functions/lib/index.js exists"
+          echo "Listing functions/lib contents:" && ls -la "$GITHUB_WORKSPACE/functions/lib" || true
           echo "Build log (last 50 lines):" && tail -n 50 build.log || true
 
       - name: Run rules tests in emulator
@@ -162,6 +164,15 @@ jobs:
           path: |
             functions/npm-ci.log
             functions/npm-install.log
+            functions/build.log
+
+      - name: Upload Functions build output (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: functions-build-output
+          path: |
+            functions/lib/**
 
       - name: Upload Firebase emulator logs (on failure)
         if: failure()

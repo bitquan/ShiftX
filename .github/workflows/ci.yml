@@ -47,11 +47,31 @@ jobs:
       - name: Install Firebase CLI
         run: curl -sL https://firebase.tools | bash
 
+      - name: Prepare Functions (install deps & build)
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          echo "Preparing functions: install deps and build"
+          cd "$GITHUB_WORKSPACE/functions"
+
+          set -o pipefail
+          npm ci --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-install.log)
+
+          ls -la node_modules || true
+          [ -f npm-ci.log ] && cat npm-ci.log || true
+          [ -f npm-install.log ] && cat npm-install.log || true
+
+          npm run build
+
       - name: Start Firebase emulators (functions + firestore)
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           firebase emulators:start --only functions,firestore &
           # Give emulators a moment to start up
           sleep 5
+          echo "Listing functions build output:"
+          ls -la "$GITHUB_WORKSPACE/functions/lib" || true
 
       - name: Run integration tests (emulator)
         run: flutter test test/integration/ride_integration_test.dart -r expanded

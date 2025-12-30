@@ -73,10 +73,18 @@ jobs:
             --only firestore,functions \
             -- bash -lc '
               set -e
-              cd functions
-              npm ci --no-audit --no-fund
+              cd packages/rules-tests
+
+              # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
+              npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+
+              npm test
+              cd ../functions
+
+              # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
+              npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+
               npm run build
-              npm run test:rules
               npm run test:functions
             '
 
@@ -161,10 +169,18 @@ jobs:
             --only firestore,functions \
             -- bash -lc '
               set -e
-              cd functions
-              npm ci --no-audit --no-fund
+              cd packages/rules-tests
+
+              # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
+              npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+
+              npm test
+              cd ../functions
+
+              # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
+              npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+
               npm run build
-              npm run test:rules
               npm run test:functions
             '
 

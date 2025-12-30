@@ -152,6 +152,14 @@ jobs:
             npm run test:functions
           '
 
+      - name: Collect global npm debug logs (on failure)
+        if: failure()
+        run: |
+          mkdir -p functions/npm-debug-logs || true
+          # Copy any npm debug logs from the runner into functions/ for artifact upload
+          cp /home/runner/.npm/_logs/*.log functions/npm-debug-logs/ 2>/dev/null || true
+          ls -la functions/npm-debug-logs || true
+
       - name: Upload Functions npm logs (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
@@ -161,6 +169,7 @@ jobs:
             functions/npm-ci.log
             functions/npm-install.log
             functions/build.log
+            functions/npm-debug-logs/**
 
       - name: Upload Functions build output (on failure)
         if: failure()

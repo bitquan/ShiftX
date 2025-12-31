@@ -1,6 +1,5 @@
 import { expect } from 'chai';
 import 'mocha';
-import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
@@ -17,12 +16,14 @@ process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'demo-no-project';
 describe('Driver lifecycle (server authoritative)', function () {
   this.timeout(10000);
 
-  let testEnv: any;
   let db: any;
 
   before(async () => {
-    testEnv = await initializeTestEnvironment({ projectId: process.env.GCLOUD_PROJECT, firestore: { host: '127.0.0.1', port: 8080, rules: '' } });
+    // Ensure emulator env vars
+    process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+    process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'demo-no-project';
     // import compiled functions
+    // @ts-ignore: import compiled JS build without type declarations
     const mod = await import('../lib/index.js');
     setDriverOnlineHandler = mod.setDriverOnlineHandler;
     driverHeartbeatHandler = mod.driverHeartbeatHandler;
@@ -36,13 +37,13 @@ describe('Driver lifecycle (server authoritative)', function () {
     db = getFirestore();
     // clean
     const drivers = await db.collection('drivers').listDocuments();
-    await Promise.all(drivers.map((d) => d.delete()));
+    await Promise.all(drivers.map((d: any) => d.delete()));
     const rides = await db.collection('rides').listDocuments();
-    await Promise.all(rides.map((d) => d.delete()));
+    await Promise.all(rides.map((d: any) => d.delete()));
   });
 
   after(async () => {
-    await testEnv.cleanup();
+    // no special cleanup required; emulator lifecycle handled by CI
   });
 
   it('driver can go online when idle and cannot go offline while busy', async () => {

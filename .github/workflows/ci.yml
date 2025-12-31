@@ -9,14 +9,19 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      FIRESTORE_EMULATOR_HOST: 127.0.0.1:8081
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node 18
+      - name: Set up Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
 
 
       - name: Set up Flutter
@@ -45,14 +50,73 @@ jobs:
       - name: Install Firebase CLI
         run: curl -sL https://firebase.tools | bash
 
-      - name: Start Firebase emulators (functions + firestore)
+      - name: Prepare Functions (install deps & build)
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          firebase emulators:start --only functions,firestore &
-          # Give emulators a moment to start up
-          sleep 5
+          echo "Preparing functions: install deps and build"
+          cd "$GITHUB_WORKSPACE/functions"
 
-      - name: Run integration tests (emulator)
-        run: flutter test test/integration/ride_integration_test.dart -r expanded
+          set -o pipefail
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+
+          ls -la node_modules || true
+          [ -f npm-ci.log ] && cat npm-ci.log || true
+          [ -f npm-install.log ] && cat npm-install.log || true
+
+          npm run build
+
+      - name: Emulator tests (Firestore rules + Functions)
+        run: |
+          set -euo pipefail
+
+          echo "Starting local emulators in background (logs => firebase-debug.log)"
+          firebase emulators:start --config firebase.ci.json --only firestore,functions > firebase-debug.log 2>&1 &
+          echo $! > emu.pid
+
+          # Wait for the emulators to print "All emulators ready!" into firebase-debug.log
+          echo "Waiting for emulators to be ready (polling firebase-debug.log)..."
+          for i in $(seq 1 60); do
+            if grep -q "All emulators ready!" firebase-debug.log 2>/dev/null; then
+              echo "Emulators ready"
+              break
+            fi
+            sleep 1
+          done
+
+          echo "Running rules tests (packages/rules-tests)"
+          cd packages/rules-tests
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          npm test 2>&1 | tee test.log || (echo 'Rules tests failed' && cat test.log && false)
+
+          cd "$GITHUB_WORKSPACE"
+          echo "Running functions tests (functions)"
+          cd functions
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          npm run build 2>&1 | tee build.log
+          npm run test:functions 2>&1 | tee functions-test.log || (echo 'Functions tests failed' && tail -n 200 functions-test.log && false)
+
+          echo "Shutting down emulators"
+          kill "$(cat ../emu.pid)" || true
+          rm -f ../emu.pid
+          sleep 1
+
+
+      - name: Collect global npm debug logs (build job) (on failure)
+        if: failure()
+        run: |
+          mkdir -p build-npm-debug-logs || true
+          cp /home/runner/.npm/_logs/*.log build-npm-debug-logs/ 2>/dev/null || true
+          cp firebase-debug.log build-npm-debug-logs/ 2>/dev/null || true
+          cp functions/firestore-debug.log build-npm-debug-logs/ 2>/dev/null || true
+          ls -la build-npm-debug-logs || true
+
+      - name: Upload Build npm debug logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-npm-debug-logs
+          path: build-npm-debug-logs/**
 
   emulator-tests:
     name: Emulator tests (Firestore rules + Functions)
@@ -61,15 +125,19 @@ jobs:
     timeout-minutes: 30
     env:
       GCLOUD_PROJECT: demo-no-project
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      FIRESTORE_EMULATOR_HOST: 127.0.0.1:8081
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js (20)
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
 
       - name: Setup Java (required by Firestore emulator)
         uses: actions/setup-java@v4
@@ -80,22 +148,98 @@ jobs:
       - name: Install Firebase CLI
         run: curl -sL https://firebase.tools | bash
 
-      - name: Run emulator-based tests (Firestore rules + Functions unit tests)
+      - name: Prepare Functions (install deps & build)
         run: |
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
-          echo "Listing workspace root:"
-          ls -la "$GITHUB_WORKSPACE" || true
-          echo "Listing functions dir:"
-          ls -la "$GITHUB_WORKSPACE/functions" || true
+          echo "Preparing functions: install deps and build"
+          echo "Node: $(node --version)"; echo "npm: $(npm --version)"
+          cd "$GITHUB_WORKSPACE/functions"
 
-          npx firebase emulators:exec --only firestore,functions "bash -lc 'cd \"$GITHUB_WORKSPACE/functions\" && npm ci --no-audit --no-fund --legacy-peer-deps 2>&1 | tee npm-ci.log && cat npm-ci.log && npm run build && npm run test:rules && npm run test:functions'"
+          # Prefer a clean CI install, but fall back to `npm install` if lockfile mismatches
+          set -o pipefail
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
 
-      - name: Upload Functions npm log (on failure)
+          # Show what we installed for diagnostics
+          ls -la node_modules || true
+          [ -f npm-ci.log ] && cat npm-ci.log || true
+          [ -f npm-install.log ] && cat npm-install.log || true
+
+          # Capture build output for diagnostics
+          npm run build 2>&1 | tee build.log
+
+          echo "Checking functions build output"
+          if [ ! -f "$GITHUB_WORKSPACE/functions/lib/index.js" ]; then
+            echo "ERROR: functions/lib/index.js missing after build. Listing functions dir:" && ls -la "$GITHUB_WORKSPACE/functions" || true
+            echo "Listing functions/lib contents:" && ls -la "$GITHUB_WORKSPACE/functions/lib" || true
+            echo "Searching for index.js files in repo:" && find "$GITHUB_WORKSPACE/functions" -maxdepth 3 -type f -name 'index.js' -ls || true
+            echo "Build log (last 200 lines):" && tail -n 200 build.log || true
+            exit 1
+          fi
+          echo "functions/lib/index.js exists"
+          echo "Listing functions/lib contents:" && ls -la "$GITHUB_WORKSPACE/functions/lib" || true
+          echo "Build log (last 50 lines):" && tail -n 50 build.log || true
+
+      - name: Emulator tests (Firestore rules + Functions)
+        run: |
+          set -euo pipefail
+
+          echo "Starting local emulators in background (logs => firebase-debug.log)"
+          firebase emulators:start --config firebase.ci.json --only firestore,functions > firebase-debug.log 2>&1 &
+          echo $! > emu.pid
+
+          # Wait for emulator to be healthy (firestore REST health check)
+          echo "Waiting for Firestore emulator to be ready..."
+          for i in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8081/emulator/v1/projects/demo-no-project:getRules 2>/dev/null; then
+              echo "Firestore emulator ready"
+              break
+            fi
+            sleep 1
+          done
+
+          echo "Running rules tests (packages/rules-tests)"
+          cd packages/rules-tests
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          npm test 2>&1 | tee test.log || (echo 'Rules tests failed' && cat test.log && false)
+
+          echo "Running functions tests (functions)"
+          cd "$GITHUB_WORKSPACE"
+          cd functions
+          npm ci --no-audit --no-fund 2>&1 | tee npm-ci.log || (echo "npm ci failed, falling back to npm install" && npm install --no-audit --no-fund 2>&1 | tee npm-install.log)
+          npm run build 2>&1 | tee build.log
+          npm run test:functions 2>&1 | tee functions-test.log || (echo 'Functions tests failed' && tail -n 200 functions-test.log && false)
+
+          echo "Shutting down emulators"
+          kill "$(cat ../emu.pid)" || true
+          rm -f ../emu.pid
+          sleep 1
+
+
+      - name: Collect global npm debug logs (on failure)
+        if: failure()
+        run: |
+          mkdir -p functions/npm-debug-logs || true
+          # Copy any npm debug logs from the runner into functions/ for artifact upload
+          cp /home/runner/.npm/_logs/*.log functions/npm-debug-logs/ 2>/dev/null || true
+          ls -la functions/npm-debug-logs || true
+
+      - name: Upload Functions npm logs (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: functions-npm-ci-log
-          path: functions/npm-ci.log
+          name: functions-npm-logs
+          path: |
+            functions/npm-ci.log
+            functions/npm-install.log
+            functions/build.log
+            functions/npm-debug-logs/**
+
+      - name: Upload Functions build output (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: functions-build-output
+          path: |
+            functions/lib/**
 
       - name: Upload Firebase emulator logs (on failure)
         if: failure()

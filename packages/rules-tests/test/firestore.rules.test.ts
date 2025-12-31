@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import { expect } from 'chai';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 
 describe('Firestore rules (rides)', function () {
@@ -13,7 +12,7 @@ describe('Firestore rules (rides)', function () {
 
     testEnv = await initializeTestEnvironment({
       projectId: 'demo-no-project',
-      firestore: { host, port, rules: fs.readFileSync('../firestore.rules', 'utf8') },
+      firestore: { host, port, rules: fs.readFileSync('../../firestore.rules', 'utf8') },
     });
   });
 

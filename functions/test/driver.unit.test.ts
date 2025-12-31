@@ -16,7 +16,6 @@ process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'demo-no-project';
 describe('Driver lifecycle (server authoritative)', function () {
   this.timeout(10000);
 
-  let testEnv: any;
   let db: any;
 
   before(async () => {

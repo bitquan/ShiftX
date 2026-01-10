@@ -2,13 +2,14 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Start Firebase emulators",
+      "label": "Firebase Emulators",
       "type": "shell",
-      "command": "firebase emulators:start --only functions,firestore",
+      "command": "firebase emulators:start --only auth,functions,firestore",
       "isBackground": true,
       "presentation": {
         "reveal": "always",
-        "panel": "shared"
+        "panel": "dedicated",
+        "group": "dev"
       },
       "problemMatcher": {
         "owner": "firebase-emulator",
@@ -19,6 +20,56 @@
           "endsPattern": ".*All emulators ready!.*"
         }
       }
+    },
+    {
+      "label": "Driver App Dev Server",
+      "type": "shell",
+      "command": "cd packages/driver-app && npm run dev",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev"
+      },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": [],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*VITE.*",
+          "endsPattern": ".*Local:.*http://localhost:4173.*"
+        }
+      }
+    },
+    {
+      "label": "Customer App Dev Server",
+      "type": "shell",
+      "command": "cd packages/customer-app && npm run dev",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev"
+      },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": [],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*VITE.*",
+          "endsPattern": ".*Local:.*http://localhost:4174.*"
+        }
+      }
+    },
+    {
+      "label": "Start All Dev Services",
+      "dependsOn": [
+        "Firebase Emulators",
+        "Driver App Dev Server",
+        "Customer App Dev Server"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
     }
   ]
 }

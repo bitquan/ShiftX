@@ -6,8 +6,10 @@
     "lint": "eslint --ext .ts src",
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
-    "test:rules": "npx mocha -r ts-node/register 'test/**/*.test.ts' --exit",
-    "test:functions": "npx mocha -r ts-node/register 'test/**/*.unit.test.ts' 'test/driver.unit.test.ts' --exit"
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "npx mocha -r ts-node/register 'test/functions.unit.test.ts' 'test/driver.unit.test.ts' --exit",
+    "test:integration": "npx mocha -r ts-node/register 'test/integration.test.ts' --exit --timeout 30000",
+    "test:rules": "npx mocha -r ts-node/register 'test/**/*.test.ts' --exit"
   },
   "engines": {
     "node": "20"
@@ -30,7 +32,7 @@
     "eslint-config-google": "^0.14.0",
     "mocha": "^10.2.0",
     "ts-node": "^10.9.1",
-    "typescript": "^5.0.0"
+    "typescript": "~5.3.3"
   },
   "overrides": {
     "minimatch": "3.0.6",

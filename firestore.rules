@@ -2,47 +2,83 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
+    function signedIn() {
       return request.auth != null;
     }
 
-    // USERS
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function hasOfferForDriver(rideId) {
+      return request.auth.uid != null
+        && exists(
+          /databases/$(database)/documents/rides/$(rideId)/offers/$(request.auth.uid)
+        );
+    }
+
+    function rideReadGuard(rideId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/rides/$(rideId)).data != null
+        && (
+          request.auth.uid == get(/databases/$(database)/documents/rides/$(rideId)).data.riderId
+          || request.auth.uid == get(/databases/$(database)/documents/rides/$(rideId)).data.driverId
+          || hasOfferForDriver(rideId)
+        );
+    }
+
+    // Users collection: stores user profile (email, role, etc)
     match /users/{uid} {
-      allow read, write: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isOwner(uid);
+
+      // Allow the user to create their own profile doc
+      allow create: if isOwner(uid);
+
+      // Allow updates, but prevent role switching
+      allow update: if isOwner(uid)
+        && request.resource.data.role == resource.data.role;
+
+      allow delete: if false;
     }
 
-    // DRIVERS
+    // Customers collection: stores customer-specific data
+    match /customers/{uid} {
+      allow read, create, update: if isOwner(uid);
+      allow delete: if false;
+    }
+
     match /drivers/{driverId} {
-      // Clients may read driver docs when signed in.
-      allow read: if isSignedIn();
-
-      // Prevent clients from writing authoritative driver fields.
-      // All changes to isBusy, currentRideId, isOnline, and timestamps
-      // must be performed through Cloud Functions (server-authoritative).
-      allow write: if false;
+      allow read: if signedIn();
+      allow create: if isOwner(driverId);
+      allow update: if isOwner(driverId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBusy', 'currentRideId', 'currentRideStatus', 'updatedAtMs']);
+      allow delete: if false;
     }
 
-    // RIDES
     match /rides/{rideId} {
-      allow read: if isSignedIn();
+      allow read: if signedIn()
+        && (
+          request.auth.uid == resource.data.riderId
+          || request.auth.uid == resource.data.driverId
+          || hasOfferForDriver(rideId)
+        );
 
-      // Allow riders to create ride requests with initial status 'requested' only.
-      allow create: if isSignedIn()
-        && request.resource.data.riderId == request.auth.uid
-        && request.resource.data.status == 'requested';
+      allow write: if false;
 
-      // Disallow clients from changing authoritative ride state fields.
-      // The server (Cloud Functions / Admin SDK) should perform state transitions.
-      allow update: if isSignedIn()
-        // allow updates only if the following protected fields are unchanged
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.driverId == resource.data.driverId
-        && request.resource.data.acceptedAtMs == resource.data.acceptedAtMs
-        && request.resource.data.startedAtMs == resource.data.startedAtMs
-        && request.resource.data.completedAtMs == resource.data.completedAtMs
-        && request.resource.data.cancelledAtMs == resource.data.cancelledAtMs
-        // allow owner to update non-authoritative fields (e.g., pickup/dropoff)
-        && request.auth.uid == resource.data.riderId;
+      match /events/{eventId} {
+        allow read: if rideReadGuard(rideId);
+        allow write: if false;
+      }
+
+      match /offers/{driverId} {
+        allow get, list: if isOwner(driverId);
+        allow write: if false;
+      }
+    }
+
+    // Allow collection group queries for offers
+    match /{path=**}/offers/{offerId} {
+      allow list: if signedIn() && request.auth.uid == resource.data.driverId;
     }
   }
 }

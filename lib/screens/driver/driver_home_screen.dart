@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../state/session_provider.dart';
 import '../../services/driver_service.dart';
 import '../../services/ride_service.dart';
+import '../../core/firestore_stream_builder.dart';
 import 'driver_incoming_ride_screen.dart';
 
 class DriverHomeScreen extends StatelessWidget {
@@ -29,17 +30,16 @@ class DriverHomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: StreamBuilder(
+      body: FirestoreStreamBuilderNullable(
         stream: drivers.watchDriverState(uid),
-        builder: (context, snapshot) {
-          final state = snapshot.data;
-
-          if (state == null) {
-            // ensure driver doc exists
-            drivers.ensureDriverDoc(uid);
-            return const Center(child: CircularProgressIndicator());
-          }
-
+        errorMessage:
+            'Unable to load driver status. Please check your connection.',
+        loadingBuilder: (context) {
+          // On first load, ensure driver doc exists
+          drivers.ensureDriverDoc(uid);
+          return const Center(child: CircularProgressIndicator());
+        },
+        builder: (context, state) {
           return Padding(
             padding: const EdgeInsets.all(16),
             child: Column(

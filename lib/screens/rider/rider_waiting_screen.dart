@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/ride_service.dart';
 import '../../core/constants.dart';
+import '../../core/firestore_stream_builder.dart';
 
 class RiderWaitingScreen extends StatelessWidget {
   final String rideId;
@@ -13,15 +14,11 @@ class RiderWaitingScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Waiting for Driver')),
-      body: StreamBuilder(
+      body: FirestoreStreamBuilderNullable(
         stream: rides.watchRide(rideId),
-        builder: (context, snapshot) {
-          final ride = snapshot.data;
-
-          if (ride == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
+        errorMessage:
+            'Unable to load ride status. Please check your connection.',
+        builder: (context, ride) {
           final status = ride.status;
           final statusText = switch (status) {
             AppConstants.rideRequested => 'Searching (solo driver will accept)',

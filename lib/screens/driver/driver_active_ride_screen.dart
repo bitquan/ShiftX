@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/ride_service.dart';
-import '../../services/driver_service.dart';
 import '../../core/constants.dart';
+import '../../core/firestore_stream_builder.dart';
 
 class DriverActiveRideScreen extends StatelessWidget {
   final String rideId;
@@ -17,18 +17,14 @@ class DriverActiveRideScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rides = context.read<RideService>();
-    final drivers = context.read<DriverService>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Active Ride')),
-      body: StreamBuilder(
+      body: FirestoreStreamBuilderNullable(
         stream: rides.watchRide(rideId),
-        builder: (context, snapshot) {
-          final ride = snapshot.data;
-          if (ride == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
+        errorMessage:
+            'Unable to load ride details. Please check your connection.',
+        builder: (context, ride) {
           return Padding(
             padding: const EdgeInsets.all(16),
             child: Column(

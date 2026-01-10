@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/ride_service.dart';
 import '../../services/driver_service.dart';
+import '../../core/firestore_stream_builder.dart';
 import 'driver_active_ride_screen.dart';
 
 class DriverIncomingRideScreen extends StatelessWidget {
@@ -23,11 +24,11 @@ class DriverIncomingRideScreen extends StatelessWidget {
       return const Center(child: Text('You are busy. Finish current ride.'));
     }
 
-    return StreamBuilder(
+    return FirestoreStreamBuilder(
       stream: rideService.watchIncomingRequestedRides(),
-      builder: (context, snapshot) {
-        final rides = snapshot.data ?? [];
-
+      errorMessage:
+          'Unable to load incoming rides. Please check your connection.',
+      builder: (context, rides) {
         if (rides.isEmpty) {
           return const Center(child: Text('No requests yet.'));
         }
@@ -92,7 +93,7 @@ class DriverIncomingRideScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'MVP: this is the “accept flow” core.\nMaps/tracking comes next.',
+                  'MVP: this is the "accept flow" core.\nMaps/tracking comes next.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12),
                 ),

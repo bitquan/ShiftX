@@ -51,7 +51,14 @@
     },
     "functions": {
       "host": "127.0.0.1",
-      "port": 5002
+      "port": 5002,
+      "env": {
+        "SEARCH_TIMEOUT_MS": "3000"
+      }
+    },
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 9099
     }
   }
 } 

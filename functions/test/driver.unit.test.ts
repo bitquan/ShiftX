@@ -10,7 +10,7 @@ let startRideHandler: any;
 let completeRideHandler: any;
 
 // Ensure emulator env
-process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8081';
 process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'demo-no-project';
 
 describe('Driver lifecycle (server authoritative)', function () {

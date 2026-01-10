@@ -1,0 +1,682 @@
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #05060a;
+  color: #e1e6ef;
+  margin: 0;
+  padding: 0;
+}
+
+/* Leaflet map dark theme */
+.leaflet-container {
+  background: #0b1220;
+  border-radius: 8px;
+}
+
+/* Map tiles with subtle brightness boost for readability */
+.map-tiles-dark {
+  filter: brightness(1.05) contrast(1.1);
+}
+
+/* Glowing neon route effect - updated for brighter blue */
+.route-glow {
+  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.9)) drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Auth gate */
+.auth-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+}
+
+.auth-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 48px 32px;
+  text-align: center;
+  max-width: 400px;
+  backdrop-filter: blur(10px);
+}
+
+.auth-card h1 {
+  margin: 0 0 12px 0;
+  font-size: 32px;
+  background: linear-gradient(135deg, #ffb703, #fb8b24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.auth-card p {
+  margin: 0 0 24px 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+/* Auth wrapper */
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 24px;
+  background: linear-gradient(135deg, #ffb703, #fb8b24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.app-content {
+  flex: 1;
+  padding: 24px;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Buttons */
+button {
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 8px 16px;
+  border: none;
+  background: linear-gradient(135deg, #ffb703, #fb8b24);
+  color: #020409;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(255, 183, 3, 0.3);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+button.secondary-button,
+button.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffd069;
+}
+
+button.primary-button {
+  background: linear-gradient(135deg, #ffb703, #fb8b24);
+  color: #020409;
+  width: 100%;
+  padding: 12px 24px;
+  font-size: 16px;
+  margin-right: 0;
+  margin-bottom: 0;
+}
+
+button.primary-button:hover:not(:disabled) {
+  box-shadow: 0 12px 24px rgba(255, 183, 3, 0.4);
+}
+
+/* Driver home */
+.driver-home {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.driver-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.driver-info {
+  flex: 1;
+}
+
+.driver-id {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.driver-status {
+  margin: 0;
+  font-size: 16px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status-badge.online {
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80;
+}
+
+.status-badge.offline {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.toggle-button {
+  padding: 12px 24px;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.toggle-button.going-offline {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.toggle-button.going-online {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: #020409;
+}
+
+.info-banner {
+  background: rgba(251, 146, 60, 0.1);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #fb923c;
+  font-size: 14px;
+}
+
+.info-banner p {
+  margin: 0;
+}
+
+.test-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.test-section h2 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+}
+
+.test-section .text-muted {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  margin: 0 0 16px 0;
+}
+
+.test-section .text-muted.small {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.offer-modal {
+  background: rgba(20, 25, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  backdrop-filter: blur(10px);
+}
+
+.offer-header {
+  margin-bottom: 24px;
+}
+
+.offer-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+}
+
+.ride-id {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.offer-details {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.detail-row .label {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.detail-row .value {
+  font-weight: 600;
+  color: #ffd069;
+}
+
+.countdown {
+  margin-bottom: 24px;
+}
+
+.countdown-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.countdown-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  transition: width 0.1s linear;
+}
+
+.countdown.expiring .countdown-progress {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.countdown-text {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  font-weight: 600;
+}
+
+.offer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.accept-button {
+  padding: 12px 24px !important;
+  font-size: 16px !important;
+  margin: 0 !important;
+}
+
+/* Active ride */
+.active-ride {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.ride-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.ride-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+}
+
+.status-badge {
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.ride-actions {
+  margin-bottom: 24px;
+}
+
+.action-button {
+  width: 100%;
+  padding: 12px 24px !important;
+  font-size: 16px !important;
+  margin: 0 !important;
+}
+
+.completion-message {
+  text-align: center;
+  padding: 24px;
+  background: rgba(74, 222, 128, 0.1);
+  border-radius: 12px;
+  color: #4ade80;
+  font-weight: 600;
+}
+
+/* Timeline */
+.ride-timeline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.timeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  position: relative;
+}
+
+.timeline-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.timeline-step.active:not(:last-child)::after {
+  background: rgba(74, 222, 128, 0.5);
+}
+
+.timeline-step.complete:not(:last-child)::after {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+.timeline-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 8px;
+}
+
+.timeline-step.active .timeline-dot {
+  background: #4ade80;
+  border-color: #22c55e;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.4);
+}
+
+.timeline-step.complete .timeline-dot {
+  background: #8b5cf6;
+  border-color: #7c3aed;
+}
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 2000;
+  max-width: 400px;
+}
+
+.toast {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(20, 25, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  backdrop-filter: blur(10px);
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.toast-success {
+  border-color: rgba(74, 222, 128, 0.3);
+  color: #4ade80;
+}
+
+.toast-error {
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.toast-warning {
+  border-color: rgba(251, 146, 60, 0.3);
+  color: #fb923c;
+}
+
+.toast-info {
+  border-color: rgba(96, 165, 250, 0.3);
+  color: #60a5fa;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 0;
+  margin-left: 12px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
+/* Utility classes */
+code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.text-muted {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.text-error {
+  color: #ef4444;
+}
+
+.spinner {
+  display: inline-block;
+  text-align: center;
+  padding: 32px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Available Rides List */
+.available-rides {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.available-rides h2 {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  color: #ffb703;
+}
+
+.available-rides-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.available-rides-empty p {
+  margin: 8px 0;
+}
+
+.available-rides-empty .subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.rides-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ride-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 20px;
+  transition: all 0.2s;
+}
+
+.ride-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ride-card.expired {
+  opacity: 0.6;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.ride-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.ride-id {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.time-badge {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.time-badge.expired {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.ride-details {
+  margin-bottom: 16px;
+}
+
+.ride-details .loading {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+  margin: 0;
+}
+
+.ride-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.ride-actions button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ride-actions .decline-button {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.ride-actions .decline-button:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+}
+
+.ride-actions .accept-button {
+  background: linear-gradient(135deg, #ffb703, #fb8b24);
+  color: #000;
+}
+
+.ride-actions .accept-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 183, 3, 0.4);
+}
+
+.ride-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+

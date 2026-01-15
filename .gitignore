@@ -70,3 +70,4 @@ functions/lib/
 
 # Test reports
 test-reports/
+serviceAccountKey.json

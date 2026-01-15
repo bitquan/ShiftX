@@ -1,0 +1,17 @@
+# Capacitor
+ios/App/Podfile.lock
+ios/App/Pods
+ios/App/public
+ios/App/App/public
+
+# Dependencies
+node_modules
+dist
+
+# IDE
+.DS_Store
+.idea
+.vscode
+
+# Build outputs
+*.log

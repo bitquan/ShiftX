@@ -1,0 +1,23 @@
+{
+  "name": "@shiftx/ios-customer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Capacitor iOS wrapper for ShiftX Customer web app",
+  "scripts": {
+    "build:web": "cd ../customer-app && npm run build",
+    "cap:sync": "npx cap sync ios",
+    "cap:copy": "npx cap copy ios",
+    "ios:open": "npx cap open ios",
+    "ios:run": "npx cap run ios",
+    "prebuild": "npm run build:web",
+    "build": "npm run cap:sync"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  }
+}

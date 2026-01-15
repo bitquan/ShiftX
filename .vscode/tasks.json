@@ -4,7 +4,7 @@
     {
       "label": "Firebase Emulators",
       "type": "shell",
-      "command": "firebase emulators:start --only auth,functions,firestore",
+      "command": "firebase emulators:start --only auth,functions,firestore,storage",
       "isBackground": true,
       "presentation": {
         "reveal": "always",
@@ -62,13 +62,167 @@
       }
     },
     {
+      "label": "Admin Dashboard Dev Server",
+      "type": "shell",
+      "command": "cd packages/admin-dashboard && npm run dev",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev"
+      },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": [],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*VITE.*",
+          "endsPattern": ".*Local:.*http://localhost:5174.*"
+        }
+      }
+    },
+    {
       "label": "Start All Dev Services",
       "dependsOn": [
         "Firebase Emulators",
         "Driver App Dev Server",
-        "Customer App Dev Server"
+        "Customer App Dev Server",
+        "Admin Dashboard Dev Server"
       ],
       "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build Functions",
+      "type": "shell",
+      "command": "cd functions && npm run build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Deploy All Functions",
+      "type": "shell",
+      "command": "firebase deploy --only functions",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        "owner": "firebase",
+        "pattern": [],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*deploying functions.*",
+          "endsPattern": ".*Deploy complete.*"
+        }
+      }
+    },
+    {
+      "label": "Deploy Wallet Functions",
+      "type": "shell",
+      "command": "firebase deploy --only functions:createSetupIntent,functions:listPaymentMethods,functions:setDefaultPaymentMethod,functions:detachPaymentMethod",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        "owner": "firebase",
+        "pattern": [],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*deploying functions.*",
+          "endsPattern": ".*Deploy complete.*"
+        }
+      }
+    },
+    {
+      "label": "Deploy Customer App",
+      "type": "shell",
+      "command": "firebase deploy --only hosting:customer",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        "owner": "firebase",
+        "pattern": [],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*deploying hosting.*",
+          "endsPattern": ".*Deploy complete.*"
+        }
+      }
+    },
+    {
+      "label": "Deploy Driver App",
+      "type": "shell",
+      "command": "firebase deploy --only hosting:driver",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        "owner": "firebase",
+        "pattern": [],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*deploying hosting.*",
+          "endsPattern": ".*Deploy complete.*"
+        }
+      }
+    },
+    {
+      "label": "Deploy Admin App",
+      "type": "shell",
+      "command": "firebase deploy --only hosting:admin",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        "owner": "firebase",
+        "pattern": [],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*deploying hosting.*",
+          "endsPattern": ".*Deploy complete.*"
+        }
+      }
+    },
+    {
+      "label": "Deploy All Hosting",
+      "type": "shell",
+      "command": "firebase deploy --only hosting",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        "owner": "firebase",
+        "pattern": [],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*deploying hosting.*",
+          "endsPattern": ".*Deploy complete.*"
+        }
+      }
+    },
+    {
+      "label": "Build & Deploy Wallet Functions",
+      "dependsOn": [
+        "Build Functions",
+        "Deploy Wallet Functions"
+      ],
+      "dependsOrder": "sequence",
       "problemMatcher": []
     }
   ]

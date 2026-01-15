@@ -1,0 +1,43 @@
+connectorId: example
+generate:
+  javascriptSdk:
+    - outputDir: ../../src/dataconnect-generated
+      package: "@dataconnect/generated"
+      packageJsonDir: ../..
+      react: false
+      angular: false
+    - outputDir: ../../packages/rules-tests/src/dataconnect-generated
+      package: "@dataconnect/generated"
+      packageJsonDir: ../../packages/rules-tests
+      react: false
+      angular: false
+    - outputDir: ../../packages/driver-app/src/dataconnect-generated
+      package: "@dataconnect/generated"
+      packageJsonDir: ../../packages/driver-app
+      react: true
+      angular: false
+    - outputDir: ../../packages/driver-client/src/dataconnect-generated
+      package: "@dataconnect/generated"
+      packageJsonDir: ../../packages/driver-client
+      react: false
+      angular: false
+    - outputDir: ../../packages/customer-app/src/dataconnect-generated
+      package: "@dataconnect/generated"
+      packageJsonDir: ../../packages/customer-app
+      react: true
+      angular: false
+    - outputDir: ../../functions/test/src/dataconnect-generated
+      package: "@dataconnect/generated"
+      packageJsonDir: ../../functions/test
+      react: false
+      angular: false
+  adminNodeSdk:
+    - outputDir: ../../functions/src/dataconnect-admin-generated
+      package: "@dataconnect/admin-generated"
+      packageJsonDir: ../../functions
+    - outputDir: ../../packages/driver-app/src/dataconnect-admin-generated
+      package: "@dataconnect/admin-generated"
+      packageJsonDir: ../../packages/driver-app
+    - outputDir: ../../packages/driver-client/src/dataconnect-admin-generated
+      package: "@dataconnect/admin-generated"
+      packageJsonDir: ../../packages/driver-client

@@ -2,11 +2,15 @@ import { useEffect, useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
 import { useToast } from './Toast';
+import { Receipt } from './Receipt';
 
 interface HistoricalRide {
   rideId: string;
   status: string;
   priceCents: number;
+  finalAmountCents?: number;
+  paymentStatus?: string;
+  serviceClass?: string;
   createdAtMs: number;
   cancelReason?: string;
   pickup?: { lat: number; lng: number };
@@ -17,12 +21,18 @@ interface HistoricalRide {
 
 interface RideHistoryProps {
   onSelectRide: (rideId: string) => void;
+  onRequestAgain?: (
+    pickup: { lat: number; lng: number }, 
+    dropoff: { lat: number; lng: number },
+    serviceClass?: string
+  ) => void;
 }
 
-export function RideHistory({ onSelectRide }: RideHistoryProps) {
+export function RideHistory({ onSelectRide, onRequestAgain }: RideHistoryProps) {
   const { show } = useToast();
   const [rides, setRides] = useState<HistoricalRide[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedRideId, setExpandedRideId] = useState<string | null>(null);
 
   useEffect(() => {
     loadHistory();
@@ -125,27 +135,39 @@ export function RideHistory({ onSelectRide }: RideHistoryProps) {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        {rides.map((ride) => (
+        {rides.map((ride) => {
+          const isExpanded = expandedRideId === ride.rideId;
+          
+          return (
           <div
             key={ride.rideId}
-            onClick={() => onSelectRide(ride.rideId)}
             style={{
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '0.5rem',
-              padding: '1rem',
-              cursor: 'pointer',
+              overflow: 'hidden',
               transition: 'all 0.2s ease',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-            }}
           >
+            <div
+              onClick={() => {
+                if (ride.status === 'completed') {
+                  setExpandedRideId(isExpanded ? null : ride.rideId);
+                } else {
+                  onSelectRide(ride.rideId);
+                }
+              }}
+              style={{
+                padding: '1rem',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
+            >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
               <div>
                 <div style={{ 
@@ -175,8 +197,68 @@ export function RideHistory({ onSelectRide }: RideHistoryProps) {
                 <div>🏁 {ride.dropoff.lat.toFixed(4)}, {ride.dropoff.lng.toFixed(4)}</div>
               </div>
             )}
+            </div>
+
+            {/* Expanded Receipt View for Completed Rides */}
+            {isExpanded && ride.status === 'completed' && (
+              <div style={{
+                padding: '1rem',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(0,0,0,0.2)',
+              }}>
+                {ride.finalAmountCents ? (
+                  <Receipt
+                    rideId={ride.rideId}
+                    pickup={ride.pickup}
+                    dropoff={ride.dropoff}
+                    finalAmountCents={ride.finalAmountCents}
+                    paymentStatus={ride.paymentStatus}
+                    completedAtMs={ride.completedAtMs}
+                  />
+                ) : (
+                  <div style={{
+                    padding: '1rem',
+                    textAlign: 'center',
+                    color: 'rgba(255,255,255,0.5)',
+                  }}>
+                    Receipt details not available
+                  </div>
+                )}
+
+                {/* Request Again Button */}
+                {onRequestAgain && ride.pickup && ride.dropoff && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRequestAgain(ride.pickup!, ride.dropoff!, ride.serviceClass);
+                    }}
+                    style={{
+                      width: '100%',
+                      marginTop: '1rem',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      background: 'rgba(33,150,243,0.15)',
+                      border: '1px solid rgba(33,150,243,0.3)',
+                      color: 'rgba(33,150,243,0.95)',
+                      fontSize: '0.95rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(33,150,243,0.25)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(33,150,243,0.15)';
+                    }}
+                  >
+                    🔄 Request This Trip Again
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        ))}
+        );})}
       </div>
     </div>
   );

@@ -13,8 +13,12 @@ export async function fetchOsrmRoute(pickup: LatLng, dropoff: LatLng): Promise<O
   // OSRM wants lng,lat in URL
   const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}?overview=full&geometries=geojson`;
   
+  console.log('[fetchOsrmRoute] Fetching route:', url);
+  
   const response = await fetch(url);
   const data = await response.json();
+  
+  console.log('[fetchOsrmRoute] Response:', data.code, data.routes?.length || 0, 'routes');
   
   if (data.code !== 'Ok' || !data.routes?.[0]) {
     throw new Error(`OSRM error: ${data.code}`);
@@ -26,6 +30,8 @@ export async function fetchOsrmRoute(pickup: LatLng, dropoff: LatLng): Promise<O
   const latlngs: [number, number][] = route.geometry.coordinates.map(
     ([lng, lat]: [number, number]) => [lat, lng]
   );
+  
+  console.log('[fetchOsrmRoute] Converted', latlngs.length, 'coordinates');
   
   return {
     latlngs,

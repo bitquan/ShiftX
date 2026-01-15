@@ -1,0 +1,24 @@
+{
+  "projects": {
+    "default": "shiftx-95c4b"
+  },
+  "targets": {
+    "shiftx-95c4b": {
+      "hosting": {
+        "landing": [
+          "shiftx-95c4b"
+        ],
+        "customer": [
+          "shiftx-95c4b-customer"
+        ],
+        "driver": [
+          "shiftx-95c4b-driver"
+        ],
+        "admin": [
+          "shiftx-95c4b-admin"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

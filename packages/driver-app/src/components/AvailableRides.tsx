@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { RideOffer, Ride, tripAccept, tripDecline, watchRide } from '@shiftx/driver-client';
+import { auth } from '../firebase';
 import { useToast } from './Toast';
 
 interface AvailableRidesProps {
@@ -12,6 +13,7 @@ interface OfferWithRide {
   rideId: string;
   offer: RideOffer;
   ride: Ride | null;
+  status: 'pending' | 'expired' | 'taken' | 'cancelled';
 }
 
 export function AvailableRides({ offers, onOfferAccepted, onOfferDeclined }: AvailableRidesProps) {
@@ -19,13 +21,29 @@ export function AvailableRides({ offers, onOfferAccepted, onOfferDeclined }: Ava
   const [offersWithRides, setOffersWithRides] = useState<OfferWithRide[]>([]);
   const [acceptingRide, setAcceptingRide] = useState<string | null>(null);
   const [decliningRide, setDecliningRide] = useState<string | null>(null);
+  const [currentDriverId, setCurrentDriverId] = useState<string | null>(null);
+
+  // Get current driver ID
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      setCurrentDriverId(uid);
+    }
+  }, []);
 
   // Watch all rides for the pending offers
   useEffect(() => {
     const unsubscribes: (() => void)[] = [];
     const ridesMap = new Map<string, Ride | null>();
+    const now = Date.now();
 
     offers.forEach((offer, rideId) => {
+      // Skip expired offers at subscription time
+      const expiresAtMs = offer.expiresAtMs || 0;
+      if (expiresAtMs <= now) {
+        console.log(`[AvailableRides] Skipping expired offer for ride ${rideId}`);
+        return;
+      }
       ridesMap.set(rideId, null);
 
       const unsubscribe = watchRide(
@@ -44,30 +62,47 @@ export function AvailableRides({ offers, onOfferAccepted, onOfferDeclined }: Ava
 
     const updateOffersWithRides = () => {
       const combined: OfferWithRide[] = [];
+      const now = Date.now();
+      
       offers.forEach((offer, rideId) => {
+        const ride = ridesMap.get(rideId);
+        
+        // Determine offer status
+        let status: 'pending' | 'expired' | 'taken' | 'cancelled' = 'pending';
+        
+        // Check if expired
+        if (offer.status !== 'pending' || now > (offer.expiresAtMs || 0)) {
+          status = 'expired';
+        }
+        
+        // Check if ride is cancelled
+        else if (ride && ride.status === 'cancelled') {
+          status = 'cancelled';
+        }
+        
+        // Check if taken by another driver
+        else if (ride && ['accepted', 'started', 'in_progress', 'completed'].includes(ride.status)) {
+          if (ride.driverId && ride.driverId !== currentDriverId) {
+            status = 'taken';
+          }
+        }
+        
         combined.push({
           rideId,
           offer,
-          ride: ridesMap.get(rideId) || null,
+          ride: ride || null,
+          status,
         });
       });
       
-      // Sort: pending first by soonest expiry, then expired/declined
+      // Sort: pending first, then by expiry time
       combined.sort((a, b) => {
-        const aExpired = a.offer.status !== 'pending' || Date.now() > (a.offer.expiresAtMs || 0);
-        const bExpired = b.offer.status !== 'pending' || Date.now() > (b.offer.expiresAtMs || 0);
+        // Pending items first
+        if (a.status === 'pending' && b.status !== 'pending') return -1;
+        if (a.status !== 'pending' && b.status === 'pending') return 1;
         
-        // Pending before expired
-        if (!aExpired && bExpired) return -1;
-        if (aExpired && !bExpired) return 1;
-        
-        // Both pending: sort by soonest expiry
-        if (!aExpired && !bExpired) {
-          return (a.offer.expiresAtMs || 0) - (b.offer.expiresAtMs || 0);
-        }
-        
-        // Both expired: maintain order
-        return 0;
+        // Then sort by expiry
+        return (a.offer.expiresAtMs || 0) - (b.offer.expiresAtMs || 0);
       });
       
       setOffersWithRides(combined);
@@ -151,25 +186,85 @@ export function AvailableRides({ offers, onOfferAccepted, onOfferDeclined }: Ava
     );
   }
 
+  // Separate pending and non-pending offers
+  const pendingOffers = offersWithRides.filter(o => o.status === 'pending');
+  const nonPendingOffers = offersWithRides.filter(o => o.status !== 'pending');
+
+  const handleClearExpired = () => {
+    nonPendingOffers.forEach(({ rideId }) => {
+      onOfferDeclined(rideId);
+    });
+    show(`Cleared ${nonPendingOffers.length} expired offer(s)`, 'success');
+  };
+
   return (
     <div className="available-rides">
-      <h2>Available Rides ({offersWithRides.length})</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h2>Available Rides ({pendingOffers.length})</h2>
+        {nonPendingOffers.length > 0 && (
+          <button
+            onClick={handleClearExpired}
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.8rem',
+              backgroundColor: 'rgba(239,68,68,0.1)',
+              border: '1px solid rgba(239,68,68,0.3)',
+              color: '#ef4444',
+              borderRadius: '6px',
+              cursor: 'pointer',
+            }}
+          >
+            Clear {nonPendingOffers.length} expired
+          </button>
+        )}
+      </div>
       <div className="rides-list">
-        {offersWithRides.map(({ rideId, offer, ride }) => {
-          const now = Date.now();
+        {offersWithRides.map(({ rideId, offer, ride, status }) => {
           const timeRemaining = getTimeRemaining(offer.expiresAtMs || 0);
-          const isExpired = offer.status !== 'pending' || now > (offer.expiresAtMs || 0);
-          const canAccept = offer.status === 'pending' && now <= (offer.expiresAtMs || 0);
           const isAccepting = acceptingRide === rideId;
           const isDeclining = decliningRide === rideId;
+          const isPending = status === 'pending';
+
+          // Status badge config
+          const statusConfig = {
+            pending: { label: 'Pending', color: '#4ade80', bgColor: 'rgba(74,222,128,0.1)' },
+            expired: { label: 'Expired', color: '#9ca3af', bgColor: 'rgba(156,163,175,0.1)' },
+            taken: { label: 'Taken by another driver', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' },
+            cancelled: { label: 'Cancelled', color: '#9ca3af', bgColor: 'rgba(156,163,175,0.1)' },
+          };
+          const statusInfo = statusConfig[status];
 
           return (
-            <div key={rideId} className={`ride-card ${isExpired ? 'expired' : ''}`}>
+            <div
+              key={rideId}
+              className="ride-card"
+              style={{
+                opacity: isPending ? 1 : 0.6,
+                border: isPending ? undefined : '1px solid rgba(156,163,175,0.3)',
+              }}
+            >
               <div className="ride-header">
                 <span className="ride-id">{rideId.slice(0, 8)}</span>
-                <span className={`time-badge ${isExpired ? 'expired' : ''}`}>
-                  {timeRemaining}
-                </span>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {isPending && (
+                    <span className="time-badge">
+                      {timeRemaining}
+                    </span>
+                  )}
+                  <span
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      color: statusInfo.color,
+                      backgroundColor: statusInfo.bgColor,
+                      border: `1px solid ${statusInfo.color}40`,
+                      borderRadius: '4px',
+                    }}
+                  >
+                    {statusInfo.label}
+                  </span>
+                </div>
               </div>
 
               {ride ? (
@@ -194,21 +289,40 @@ export function AvailableRides({ offers, onOfferAccepted, onOfferDeclined }: Ava
               )}
 
               <div className="ride-actions">
-                <button
-                  onClick={() => handleDecline(rideId)}
-                  disabled={isDeclining || isAccepting}
-                  className="decline-button"
-                >
-                  {isDeclining ? 'Declining...' : 'Decline'}
-                </button>
-                <button
-                  onClick={() => handleAccept(rideId)}
-                  disabled={!canAccept || isAccepting || isDeclining}
-                  className="accept-button"
-                  title={!canAccept ? 'Offer expired or unavailable' : ''}
-                >
-                  {isAccepting ? 'Accepting...' : isExpired ? 'Expired' : 'Accept'}
-                </button>
+                {isPending ? (
+                  <>
+                    <button
+                      onClick={() => handleDecline(rideId)}
+                      disabled={isDeclining || isAccepting}
+                      className="decline-button"
+                    >
+                      {isDeclining ? 'Declining...' : 'Decline'}
+                    </button>
+                    <button
+                      onClick={() => handleAccept(rideId)}
+                      disabled={isAccepting || isDeclining}
+                      className="accept-button"
+                    >
+                      {isAccepting ? 'Accepting...' : 'Accept'}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => onOfferDeclined(rideId)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      backgroundColor: 'rgba(156,163,175,0.1)',
+                      border: '1px solid rgba(156,163,175,0.3)',
+                      color: '#9ca3af',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                )}
               </div>
             </div>
           );

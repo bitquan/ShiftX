@@ -10,13 +10,16 @@
     "demo": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 FUNCTIONS_EMULATOR_HOST=127.0.0.1:5002 ts-node src/demoDriverFlow.ts",
     "dev:emulators": "cd ../.. && firebase emulators:start --only functions,firestore,auth"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@dataconnect/admin-generated": "file:src/dataconnect-admin-generated",
+    "@dataconnect/generated": "file:src/dataconnect-generated"
+  },
   "peerDependencies": {
     "firebase": "^11.10.0"
   },
   "devDependencies": {
-    "firebase": "^11.10.0",
     "cross-env": "^7.0.3",
+    "firebase": "^11.10.0",
     "firebase-admin": "^11.0.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.3.3"

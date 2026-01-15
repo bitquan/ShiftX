@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- SEO Meta Tags -->
+  <title>ShiftX - Affordable Rideshare Platform | $1.50 Fee on Rides</title>
+  <meta name="description" content="ShiftX is an affordable rideshare platform with a simple $1.50 platform fee. Connect with drivers and riders in your area. Fair pricing for everyone.">
+  <meta name="keywords" content="rideshare, affordable rides, taxi alternative, driver jobs, ShiftX, ride sharing, platform fee, transparent pricing">
+  <meta name="author" content="ShiftX">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://shiftx-95c4b.web.app/">
+  <meta property="og:title" content="ShiftX - Affordable Rideshare Platform">
+  <meta property="og:description" content="Join ShiftX for transparent, affordable ridesharing. Only $1.50 platform fee per ride. Sign up as a driver or customer today.">
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:title" content="ShiftX - Affordable Rideshare Platform">
+  <meta property="twitter:description" content="Join ShiftX for transparent, affordable ridesharing. Only $1.50 platform fee per ride.">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🚗</text></svg>">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #fff;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      text-align: center;
+      padding: 3rem 0 2rem;
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #60a5fa 0%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tagline {
+      font-size: 1.5rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 3rem;
+    }
+
+    .hero-section {
+      text-align: center;
+      padding: 2rem 0;
+    }
+
+    .value-props {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin: 3rem 0;
+    }
+
+    .value-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 2rem;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .value-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(96, 165, 250, 0.2);
+    }
+
+    .value-card h3 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #60a5fa;
+    }
+
+    .value-card p {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 1.05rem;
+    }
+
+    .pricing-section {
+      background: rgba(96, 165, 250, 0.1);
+      border: 2px solid rgba(96, 165, 250, 0.3);
+      border-radius: 20px;
+      padding: 3rem;
+      margin: 3rem 0;
+      text-align: center;
+    }
+
+    .pricing-section h2 {
+      font-size: 2.5rem;
+      margin-bottom: 1.5rem;
+      color: #60a5fa;
+    }
+
+    .fee-amount {
+      font-size: 4rem;
+      font-weight: 800;
+      color: #fff;
+      margin: 1rem 0;
+    }
+
+    .fee-description {
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 0.8);
+      max-width: 600px;
+      margin: 1rem auto 2rem;
+    }
+
+    .fee-breakdown {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .fee-item {
+      text-align: center;
+    }
+
+    .fee-item .icon {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .fee-item .label {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .fee-item .amount {
+      font-size: 1.5rem;
+      color: #60a5fa;
+      font-weight: 700;
+    }
+
+    .cta-section {
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      margin: 3rem 0;
+      flex-wrap: wrap;
+    }
+
+    .cta-button {
+      display: inline-block;
+      padding: 1.5rem 3rem;
+      font-size: 1.3rem;
+      font-weight: 700;
+      text-decoration: none;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+      min-width: 250px;
+      text-align: center;
+    }
+
+    .cta-driver {
+      background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+      color: white;
+      box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+    }
+
+    .cta-driver:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(139, 92, 246, 0.6);
+    }
+
+    .cta-customer {
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      color: white;
+      box-shadow: 0 4px 20px rgba(96, 165, 250, 0.4);
+    }
+
+    .cta-customer:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(96, 165, 250, 0.6);
+    }
+
+    .features-section {
+      margin: 4rem 0;
+    }
+
+    .features-section h2 {
+      text-align: center;
+      font-size: 2.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 2rem;
+    }
+
+    .feature {
+      text-align: center;
+    }
+
+    .feature .emoji {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .feature h4 {
+      font-size: 1.3rem;
+      margin-bottom: 0.5rem;
+      color: #60a5fa;
+    }
+
+    .feature p {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    footer {
+      text-align: center;
+      padding: 3rem 0 2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: 4rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2.5rem;
+      }
+
+      .tagline {
+        font-size: 1.2rem;
+      }
+
+      .fee-amount {
+        font-size: 3rem;
+      }
+
+      .cta-button {
+        width: 100%;
+      }
+
+      .fee-breakdown {
+        gap: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🚗 ShiftX</h1>
+      <p class="tagline">Ridesharing Made Simple, Fair, and Affordable</p>
+    </header>
+
+    <main>
+      <section class="hero-section">
+        <div class="value-props">
+          <div class="value-card">
+            <h3>For Drivers 🚗</h3>
+            <p>Keep more of what you earn. Set your own schedule. Connect with customers directly. Only $1.50 per ride keeps our platform running.</p>
+          </div>
+          <div class="value-card">
+            <h3>For Riders 🗺️</h3>
+            <p>Affordable rides without surge pricing. Real-time tracking. Safe and reliable. Just $1.50 platform fee per ride—no hidden charges.</p>
+          </div>
+          <div class="value-card">
+            <h3>100% Transparent 💎</h3>
+            <p>No percentage cuts. No confusing fees. Just a simple $1.50 to keep the lights on. What you see is what you pay.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="pricing-section">
+        <h2>Simple, Honest Pricing</h2>
+        <div class="fee-amount">$1.50</div>
+        <p class="fee-description">
+          That's all we charge—$1.50 per ride from both the rider and the driver. 
+          This small platform fee keeps ShiftX running, servers humming, and your data secure. 
+          <strong>No hidden fees. No percentage cuts. Just $1.50.</strong>
+        </p>
+        <div class="fee-breakdown">
+          <div class="fee-item">
+            <div class="icon">👤</div>
+            <div class="label">Customer Fee</div>
+            <div class="amount">$1.50</div>
+          </div>
+          <div class="fee-item">
+            <div class="icon">🚗</div>
+            <div class="label">Driver Fee</div>
+            <div class="amount">$1.50</div>
+          </div>
+        </div>
+        <p style="margin-top: 2rem; font-size: 1.1rem; color: rgba(255,255,255,0.7);">
+          <strong>Total platform cost per ride: $3.00</strong><br>
+          Goes directly to maintaining and improving the platform for everyone.
+        </p>
+      </section>
+
+      <section class="cta-section">
+        <a href="https://shiftx-95c4b-driver.web.app" class="cta-button cta-driver">
+          🚗 Sign Up as Driver
+        </a>
+        <a href="https://shiftx-95c4b-customer.web.app" class="cta-button cta-customer">
+          🗺️ Sign Up as Customer
+        </a>
+      </section>
+
+      <section class="features-section">
+        <h2>Why Choose ShiftX?</h2>
+        <div class="features-grid">
+          <div class="feature">
+            <div class="emoji">💰</div>
+            <h4>Fair Pricing</h4>
+            <p>Drivers keep more earnings. Riders pay less. Everyone wins.</p>
+          </div>
+          <div class="feature">
+            <div class="emoji">📱</div>
+            <h4>Real-Time Tracking</h4>
+            <p>Know exactly where your ride is at all times.</p>
+          </div>
+          <div class="feature">
+            <div class="emoji">🔒</div>
+            <h4>Secure Payments</h4>
+            <p>Powered by Stripe. Your payment info is always safe.</p>
+          </div>
+          <div class="feature">
+            <div class="emoji">⚡</div>
+            <h4>Fast Matching</h4>
+            <p>Get matched with drivers quickly in your area.</p>
+          </div>
+          <div class="feature">
+            <div class="emoji">⭐</div>
+            <h4>Rating System</h4>
+            <p>Build trust with transparent reviews.</p>
+          </div>
+          <div class="feature">
+            <div class="emoji">🌍</div>
+            <h4>Local First</h4>
+            <p>Supporting your local community of drivers.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta-section" style="margin-top: 4rem;">
+        <a href="https://shiftx-95c4b-driver.web.app" class="cta-button cta-driver">
+          Start Driving Today →
+        </a>
+        <a href="https://shiftx-95c4b-customer.web.app" class="cta-button cta-customer">
+          Get Your First Ride →
+        </a>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2026 ShiftX. All rights reserved.</p>
+      <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+        Simple ridesharing. Fair pricing. Transparent fees.
+      </p>
+    </footer>
+  </div>
+
+  <!-- Schema.org structured data for SEO -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "ShiftX",
+    "description": "Affordable rideshare platform with transparent $1.50 platform fee per ride",
+    "url": "https://shiftx-95c4b.web.app",
+    "applicationCategory": "TransportationApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "1.50",
+      "priceCurrency": "USD",
+      "description": "Platform fee per ride"
+    },
+    "operatingSystem": "Web",
+    "permissions": "Location services required"
+  }
+  </script>
+</body>
+</html>

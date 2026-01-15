@@ -9,7 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated",
     "@shiftx/driver-client": "file:../driver-client",
+    "@stripe/react-stripe-js": "^5.4.1",
+    "@stripe/stripe-js": "^8.6.1",
     "firebase": "^11.10.0",
     "leaflet": "^1.9.4",
     "react": "^18.3.0",

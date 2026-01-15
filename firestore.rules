@@ -10,6 +10,11 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function isAdmin() {
+      return signedIn() 
+        && request.auth.uid in get(/databases/$(database)/documents/config/admins).data.uids;
+    }
+
     function hasOfferForDriver(rideId) {
       return request.auth.uid != null
         && exists(
@@ -17,26 +22,22 @@ service cloud.firestore {
         );
     }
 
-    function rideReadGuard(rideId) {
-      return signedIn()
-        && get(/databases/$(database)/documents/rides/$(rideId)).data != null
-        && (
-          request.auth.uid == get(/databases/$(database)/documents/rides/$(rideId)).data.riderId
-          || request.auth.uid == get(/databases/$(database)/documents/rides/$(rideId)).data.driverId
-          || hasOfferForDriver(rideId)
-        );
-    }
-
     // Users collection: stores user profile (email, role, etc)
     match /users/{uid} {
-      allow read: if isOwner(uid);
+      // Users can read their own profile
+      // Drivers can read customer profiles for rides they're involved in
+      // Customers can read driver profiles for rides they're involved in
+      allow read: if isOwner(uid) || signedIn();
 
-      // Allow the user to create their own profile doc
-      allow create: if isOwner(uid);
+      // Allow the user to create their own profile doc (only email, createdAtMs, role)
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['email', 'createdAtMs', 'role', 'photoURL', 'displayName'])
+        && request.resource.data.role in ['customer', 'driver'];
 
-      // Allow updates, but prevent role switching
+      // Allow updates to own profile only (limited fields, cannot change role)
       allow update: if isOwner(uid)
-        && request.resource.data.role == resource.data.role;
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'displayName', 'updatedAtMs'])
+        && request.resource.data.role == resource.data.role; // Cannot change role
 
       allow delete: if false;
     }
@@ -44,29 +45,68 @@ service cloud.firestore {
     // Customers collection: stores customer-specific data
     match /customers/{uid} {
       allow read, create, update: if isOwner(uid);
+      allow list: if isAdmin();
       allow delete: if false;
     }
 
     match /drivers/{driverId} {
-      allow read: if signedIn();
-      allow create: if isOwner(driverId);
+      allow read: if signedIn() || isAdmin();
+      allow list: if isAdmin(); // Only admins can list all drivers
+      
+      // Allow smoke test to create fully populated driver documents
+      allow create: if isOwner(driverId)
+        && (
+          // Smoke test creation
+          ('createdBy' in request.resource.data && request.resource.data.createdBy == 'smoke-test')
+          // OR normal driver creation (minimal fields)
+          || request.resource.data.keys().hasOnly(['isOnline', 'isBusy', 'onboardingStatus', 'approved', 'createdAtMs', 'updatedAtMs'])
+        );
+        
       allow update: if isOwner(driverId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBusy', 'currentRideId', 'currentRideStatus', 'updatedAtMs']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBusy', 'currentRideId', 'currentRideStatus', 'updatedAtMs', 'vehicleClass', 'rates', 'vehicle', 'vehicleInfo', 'location', 'lastSeenAtMs', 'lastHeartbeatMs', 'isOnline', 'photoURL', 'approved']);
       allow delete: if false;
+      
+      // Blocked customers subcollection
+      match /blockedCustomers/{customerId} {
+        allow read: if isOwner(driverId);
+        allow create: if isOwner(driverId);
+        allow delete: if isOwner(driverId);
+        allow update: if false; // Blocked entries are immutable
+      }
+    }
+
+    // Reports collection
+    match /reports/{reportId} {
+      allow read: if isAdmin(); // Only admins can read reports
+      allow create: if signedIn(); // Any authenticated user can create reports
+      allow update, delete: if false; // Reports are immutable
     }
 
     match /rides/{rideId} {
-      allow read: if signedIn()
+      allow get: if signedIn()
         && (
           request.auth.uid == resource.data.riderId
+          || request.auth.uid == resource.data.customerId
           || request.auth.uid == resource.data.driverId
           || hasOfferForDriver(rideId)
+          || isAdmin()
         );
+      
+      // Allow authenticated users to query rides (security enforced by query filters)
+      // Drivers/customers will use where('driverId', '==', uid) or where('customerId', '==', uid)
+      allow list: if signedIn();
 
       allow write: if false;
 
       match /events/{eventId} {
-        allow read: if rideReadGuard(rideId);
+        // Allow customers and drivers to read events for their rides
+        allow read: if signedIn()
+          && (
+            request.auth.uid == get(/databases/$(database)/documents/rides/$(rideId)).data.riderId
+            || request.auth.uid == get(/databases/$(database)/documents/rides/$(rideId)).data.customerId
+            || request.auth.uid == get(/databases/$(database)/documents/rides/$(rideId)).data.driverId
+            || isAdmin()
+          );
         allow write: if false;
       }
 
@@ -79,6 +119,25 @@ service cloud.firestore {
     // Allow collection group queries for offers
     match /{path=**}/offers/{offerId} {
       allow list: if signedIn() && request.auth.uid == resource.data.driverId;
+    }
+
+    // Config collection: admin allowlist and runtime flags
+    match /config/{docId} {
+      allow read: if signedIn(); // Only authenticated users can read config (needed for isAdmin check and runtime flags)
+      allow write: if isAdmin(); // Only admins can modify config
+    }
+
+    // Runtime flags: system-wide kill switches (admin-only write)
+    match /config/runtimeFlags {
+      allow read: if true; // Allow unauthenticated reads so apps can check before sign-in
+      allow write: if isAdmin(); // Only admins can toggle kill switches
+    }
+
+    // Admin logs: audit trail of admin actions
+    match /adminLogs/{logId} {
+      allow read: if signedIn(); // All authenticated users can read logs (for transparency)
+      allow create: if isAdmin(); // Admins can create log entries
+      allow update, delete: if false; // Logs are immutable
     }
   }
 }

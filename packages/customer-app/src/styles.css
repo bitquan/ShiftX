@@ -402,3 +402,25 @@ button:disabled {
     max-width: 100%;
   }
 }
+/* Address autocomplete dropdown */
+.address-autocomplete-dropdown {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.address-autocomplete-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.address-autocomplete-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.address-autocomplete-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.address-autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

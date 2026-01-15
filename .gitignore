@@ -48,3 +48,25 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase
+.firebase/
+*-debug.log
+ui-debug.log
+firestore-debug.log
+service-account-key.json
+
+# Environment variables
+.env
+.env.local
+**/.env
+**/.env.local
+
+# Build outputs
+dist/
+**/dist/
+lib/
+functions/lib/
+
+# Test reports
+test-reports/

@@ -1,0 +1,91 @@
+import { useState } from 'react';
+import { Overview } from './Overview';
+import { Drivers } from './Drivers';
+import { Customers } from './Customers';
+import { Rides } from './Rides';
+import { AdminLogs } from './AdminLogs';
+import { RuntimeFlags } from './RuntimeFlags';
+import { Reports } from './Reports';
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebase';
+
+type Screen = 'overview' | 'drivers' | 'customers' | 'rides' | 'logs' | 'runtime-flags' | 'reports';
+
+export function Dashboard() {
+  const [activeScreen, setActiveScreen] = useState<Screen>('overview');
+
+  const handleSignOut = async () => {
+    if (window.confirm('Sign out of admin dashboard?')) {
+      await signOut(auth);
+    }
+  };
+
+  return (
+    <div className="dashboard">
+      <nav className="dashboard-nav">
+        <div className="nav-brand">
+          <h1>🛡️ ShiftX Admin</h1>
+        </div>
+        
+        <div className="nav-links">
+          <button
+            className={activeScreen === 'overview' ? 'active' : ''}
+            onClick={() => setActiveScreen('overview')}
+          >
+            📊 Overview
+          </button>
+          <button
+            className={activeScreen === 'drivers' ? 'active' : ''}
+            onClick={() => setActiveScreen('drivers')}
+          >
+            🚗 Drivers
+          </button>
+          <button
+            className={activeScreen === 'customers' ? 'active' : ''}
+            onClick={() => setActiveScreen('customers')}
+          >
+            👤 Customers
+          </button>
+          <button
+            className={activeScreen === 'rides' ? 'active' : ''}
+            onClick={() => setActiveScreen('rides')}
+          >
+            🚀 Rides
+          </button>
+          <button
+            className={activeScreen === 'logs' ? 'active' : ''}
+            onClick={() => setActiveScreen('logs')}
+          >
+            📝 Logs
+          </button>
+          <button
+            className={activeScreen === 'runtime-flags' ? 'active' : ''}
+            onClick={() => setActiveScreen('runtime-flags')}
+          >
+            ⚡ Runtime Flags
+          </button>
+          <button
+            className={activeScreen === 'reports' ? 'active' : ''}
+            onClick={() => setActiveScreen('reports')}
+          >
+            ⚠️ Reports
+          </button>
+        </div>
+
+        <button className="sign-out-btn" onClick={handleSignOut}>
+          Sign Out
+        </button>
+      </nav>
+
+      <div className="dashboard-content">
+        {activeScreen === 'overview' && <Overview />}
+        {activeScreen === 'drivers' && <Drivers />}
+        {activeScreen === 'customers' && <Customers />}
+        {activeScreen === 'rides' && <Rides />}
+        {activeScreen === 'logs' && <AdminLogs />}
+        {activeScreen === 'runtime-flags' && <RuntimeFlags />}
+        {activeScreen === 'reports' && <Reports />}
+      </div>
+    </div>
+  );
+}

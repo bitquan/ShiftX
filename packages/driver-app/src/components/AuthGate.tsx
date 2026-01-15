@@ -1,15 +1,20 @@
 import React from 'react';
 import { User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
 import { useToast } from './Toast';
+import { driverSetOnline, DriverProfile } from '@shiftx/driver-client';
+import { DebugPanel } from './DebugPanel';
 
 interface AuthGateProps {
   user: User | null;
-  auth: ReturnType<typeof import('firebase/auth').getAuth>;
   loading?: boolean;
   children: React.ReactNode;
+  isSigningOutRef?: React.MutableRefObject<boolean>;
+  driverProfile?: DriverProfile | null;
+  currentRideId?: string | null;
 }
 
-export function AuthGate({ user, auth, loading = false, children }: AuthGateProps) {
+export function AuthGate({ user, loading = false, children, isSigningOutRef, driverProfile, currentRideId }: AuthGateProps) {
   const { show } = useToast();
   const [signingIn, setSigningIn] = React.useState(false);
   const [isSignUp, setIsSignUp] = React.useState(false);
@@ -48,8 +53,36 @@ export function AuthGate({ user, auth, loading = false, children }: AuthGateProp
 
   const handleSignOut = async () => {
     try {
+      // First: go offline to stop heartbeat and clear presence
+      try {
+        await driverSetOnline(false);
+      } catch (e) {
+        console.warn('Failed to set offline before sign out:', e);
+      }
+      
+      // Then: sign out and clear persistence
       await signOut(auth);
-      show('Signed out', 'info');
+      
+      // Clear indexedDB to prevent auto-restore
+      if (typeof indexedDB !== 'undefined') {
+        try {
+          await new Promise((resolve, reject) => {
+            const request = indexedDB.deleteDatabase('firebaseLocalStorageDb');
+            request.onsuccess = () => resolve(true);
+            request.onerror = () => reject(request.error);
+            request.onblocked = () => resolve(true);
+          });
+        } catch (e) {
+          console.warn('Failed to clear indexedDB:', e);
+        }
+      }
+      
+      show('Signed out successfully', 'info');
+      
+      // Reload to ensure clean state
+      setTimeout(() => {
+        window.location.reload();
+      }, 300);
     } catch (error) {
       show(`Sign out failed: ${(error as Error).message}`, 'error');
     }
@@ -128,9 +161,12 @@ export function AuthGate({ user, auth, loading = false, children }: AuthGateProp
     <div className="auth-wrapper">
       <div className="app-header">
         <h1>ShiftX Driver</h1>
-        <button onClick={handleSignOut} className="secondary-button">
-          Sign out
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <DebugPanel driverProfile={driverProfile || null} currentRideId={currentRideId} driverUid={user?.uid} />
+          <button onClick={handleSignOut} className="secondary-button">
+            Sign out
+          </button>
+        </div>
       </div>
       <div className="app-content">{children}</div>
     </div>

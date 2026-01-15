@@ -10,7 +10,7 @@ export default defineConfig({
     dedupe: ['firebase', 'firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/functions'],
   },
   optimizeDeps: {
-    include: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/functions'],
+    include: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/functions', 'firebase/storage'],
     exclude: [],
     esbuildOptions: {
       target: 'es2020',

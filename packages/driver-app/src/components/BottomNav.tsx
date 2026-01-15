@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type TabId = 'home' | 'rides' | 'profile';
+export type TabId = 'home' | 'rides' | 'wallet' | 'profile';
 
 interface BottomNavProps {
   activeTab: TabId;
@@ -11,6 +11,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const tabs: Array<{ id: TabId; label: string; icon: string }> = [
     { id: 'home', label: 'Home', icon: '🏠' },
     { id: 'rides', label: 'Rides', icon: '🚗' },
+    { id: 'wallet', label: 'Wallet', icon: '💰' },
     { id: 'profile', label: 'Profile', icon: '👤' },
   ];
 

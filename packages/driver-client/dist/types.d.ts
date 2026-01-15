@@ -4,13 +4,30 @@ export interface LatLng {
     lat: number;
     lng: number;
 }
+export interface SavedPlace {
+    address: string;
+    lat: number;
+    lng: number;
+}
+export interface VehicleInfo {
+    make: string;
+    model: string;
+    color: string;
+    plate: string;
+}
 export interface DriverProfile {
     isOnline?: boolean;
     isBusy?: boolean;
+    approved?: boolean;
     currentRideId?: string | null;
     currentRideStatus?: 'accepted' | 'started' | 'in_progress' | 'completed';
     vehicle?: string;
+    vehicleClass?: 'shiftx' | 'shift_lx' | 'shift_black';
+    vehicleInfo?: VehicleInfo;
     onboardingStatus?: 'pending' | 'active' | 'suspended';
+    photoURL?: string;
+    ratingAvg?: number;
+    ratingCount?: number;
     updatedAtMs?: number;
     lastSeenAtMs?: number;
     location?: LatLng;
@@ -18,7 +35,17 @@ export interface DriverProfile {
 export interface UserProfile {
     role?: 'driver' | 'customer' | 'admin';
     displayName?: string;
+    photoURL?: string;
     createdAtMs?: number;
+}
+export interface CustomerProfile {
+    onboardingStatus?: 'pending' | 'active' | 'suspended';
+    homePlace?: SavedPlace;
+    workPlace?: SavedPlace;
+    ratingAvg?: number;
+    ratingCount?: number;
+    createdAtMs?: number;
+    updatedAtMs?: number;
 }
 export interface RideOffer {
     driverId: string;

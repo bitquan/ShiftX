@@ -1,6 +1,9 @@
 # ShiftX - Solo Driver Rideshare Platform
 
-A minimal viable rideshare platform with customer and driver web apps, Firebase backend, and real-time GPS tracking.
+A production-ready rideshare platform with customer and driver web apps, Firebase backend, real-time GPS tracking, Stripe payments, and comprehensive ride event logging.
+
+> **📚 Full Documentation:** [docs/INDEX.md](docs/INDEX.md)  
+> **Organized by category:** Architecture · Backend · Deployment · Testing · Features
 
 ## Architecture Overview
 
@@ -10,9 +13,12 @@ shiftx/
 ├── packages/
 │   ├── customer-app/     # React customer web app (Vite + TypeScript)
 │   ├── driver-app/       # React driver web app (Vite + TypeScript)
+│   ├── admin-dashboard/  # React admin dashboard (Vite + TypeScript)
 │   ├── driver-client/    # Shared Firebase client utilities
+│   ├── shared/           # Shared constants and types
 │   └── rules-tests/      # Firestore security rules tests
 ├── functions/            # Firebase Cloud Functions (Node.js/TypeScript)
+├── scripts/              # Test automation and utilities
 ├── firestore.rules       # Firestore security rules
 └── docs/                 # Detailed documentation
 ```
@@ -30,25 +36,44 @@ shiftx/
 ## Core Features
 
 ### Customer App
-- **Tap-to-Set Ride Requests:** Tap map to set pickup/dropoff
-- **Road-Following Routes:** OSRM integration with glowing blue polyline
-- **Real-Time Tracking:** Live driver location and ride status
-- **Scheduled Rides:** Book rides for future times with timezone validation
-- **Preferred Driver:** QR code invites to connect with specific drivers
+- **Ride Requests:** Tap map or use address autocomplete for pickup/dropoff
+- **Real-Time Tracking:** Live driver location with moving car icon during rides
+- **Real-Time Ride Timeline:** Firestore listener (onSnapshot) for instant event updates - no polling
+- **Ride History:** View past rides with receipts
+- **Request Again:** Rebook previous trips with one click
+- **Stripe Payments:** Manual capture flow (authorize on accept, capture on complete)
+- **Payment Authorization:** Real-time payment status tracking with visual indicators
+- **Road-Following Routes:** OSRM/Mapbox/Google routing with glowing blue polyline
+- **Driver ETA:** Live ETA calculation when driver is en route to pickup
 
 ### Driver App
-- **Bottom Navigation:** Home (availability) / Active Ride / Settings
-- **Availability Management:** Set hourly availability (12-hour format)
-- **Live GPS Tracking:** Throttled location updates (5s OR 20m movement)
-- **Active Ride Map:** Road-following route with pickup/dropoff markers
-- **Apple Maps Integration:** Navigate button opens Apple Maps
-- **Trip Management:** Accept → Start → Complete workflow
+- **Ride Offers:** Accept/decline incoming ride requests with countdown timer
+- **Offer Reconciliation:** See when offers are "taken by another driver" with status badges
+- **Active Ride Management:** Accept → Start → In Progress → Complete workflow
+- **Payment Status:** Real-time visual banners (waiting/authorized) with "last updated" indicator
+- **Payment Gating:** Start ride button disabled until payment is authorized
+- **Live GPS Tracking:** Real-time location updates synced to active ride (5s/20m throttle)
+- **Earnings Dashboard:** Today/week totals with ledger of completed trips
+- **Trip Receipts:** View completed ride details and earnings
+- **Apple Maps Navigation:** One-tap navigation to pickup/dropoff
 
-### Backend (Cloud Functions)
-- **Ride Management:** `createRide`, `cancelRide`, `acceptRide`, `startRide`, `completeRide`
-- **Driver Features:** `setDriverAvailability`, `setPreferredDriver`, `driverHeartbeat`
-- **Scheduling:** `scheduleRide`, `activateScheduledRides` (Cloud Scheduler Pub/Sub)
-- **Events:** `getRideEvents` for real-time status polling
+### Admin Dashboard
+- **Driver Management:** View all registered drivers with status
+- **Driver Approval:** Approve or disable drivers
+- **Real-Time Status:** See which drivers are currently online
+- **Admin Authentication:** Secure admin-only access with Firebase Auth
+- **CORS Protected:** All API calls properly configured for production
+
+### Backend (Cloud Functions Gen 2)
+- **Ride Lifecycle:** `tripRequest`, `acceptRide`, `startRide`, `progressRide`, `completeRide`, `cancelRide`
+- **Event Logging:** Comprehensive event tracking to `rides/{rideId}/events` subcollection
+- **Driver Management:** `driverSetOnline`, `driverHeartbeat`, `setDriverAvailability`, `getDriverLedgerSummary`
+- **Admin Functions:** `listDrivers`, `approveDriver` (admin authentication required)
+- **Payment Processing:** `customerConfirmPayment`, `getPaymentState`, `setPaymentAuthorized`, `addPaymentMethod`
+- **Payment Gating:** `startRide` blocked until `paymentStatus === 'authorized'`
+- **Ride History:** `getRideHistory`, `getRideEvents`
+- **Ledger System:** Automatic trip earnings recording to driver ledger on ride completion
+- **CORS:** Configured for production, legacy, and development domains
 
 ---
 
@@ -214,16 +239,41 @@ See `docs/FUNCTIONS.md` for deployment and testing.
 
 ## Testing
 
+### Automated E2E Smoke Test
+Comprehensive end-to-end test validating the full ride flow:
+```bash
+# Run in emulator mode (full flow test)
+node scripts/smokeTest.js --mode emulator
+
+# Run in production mode (payment gate verification)
+node scripts/smokeTest.js --mode prod --api-key YOUR_API_KEY
+```
+
+**Test Coverage:**
+- Creates test customer and driver users
+- Driver goes online
+- Customer requests ride ($15.00)
+- Driver accepts offer
+- Customer authorizes payment
+- Driver starts ride
+- Driver progresses ride
+- Driver completes ride
+- Verifies final state (payment captured, ride completed)
+
+**Performance:** ~1.2 seconds, exit code 0 on success
+
 ### Build Production
 ```bash
 cd packages/customer-app && npm run build
 cd packages/driver-app && npm run build
+cd packages/admin-dashboard && npm run build
 ```
 
 ### Preview Production Builds
 ```bash
 cd packages/customer-app && npm run preview  # Port 4173
 cd packages/driver-app && npm run preview    # Port 4174
+cd packages/admin-dashboard && npm run preview  # Port 4175
 ```
 
 ### Firestore Rules Tests

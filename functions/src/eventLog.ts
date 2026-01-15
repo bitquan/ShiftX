@@ -9,12 +9,17 @@ export type RideEventType =
   | 'offer_accepted'
   | 'ride_accepted'
   | 'ride_started'
+  | 'ride_in_progress'
   | 'ride_completed'
   | 'ride_cancelled'
   | 'search_timeout'
   | 'driver_online_triggered_match'
   | 'ride_scheduled'
-  | 'scheduled_ride_activated';
+  | 'scheduled_ride_activated'
+  | 'payment_intent_created'
+  | 'payment_authorized'
+  | 'payment_captured'
+  | 'payment_cancelled';
 
 export interface RideEvent {
   type: RideEventType;

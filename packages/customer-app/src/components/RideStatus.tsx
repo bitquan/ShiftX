@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useToast } from './Toast';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -7,7 +7,11 @@ import { auth, db, functions } from '../firebase';
 import { RideTimeline } from './RideTimeline';
 import { SharedMap } from './map/SharedMap';
 import { TripCard } from './ui/TripCard';
+import { PaymentAuthorize } from './PaymentAuthorize';
+import { Receipt } from './Receipt';
 import { useRoutePolyline } from '../hooks/useRoutePolyline';
+import { useDriverEta } from '../hooks/useDriverEta';
+import { RuntimeFlags } from '../utils/runtimeFlags';
 import 'leaflet/dist/leaflet.css';
 
 interface Ride {
@@ -19,6 +23,7 @@ interface Ride {
   dropoff?: { lat: number; lng: number };
   driverLocation?: { lat: number; lng: number };
   priceCents?: number;
+  finalAmountCents?: number;
   createdAtMs?: number;
   searchStartedAtMs?: number;
   searchExpiresAtMs?: number;
@@ -26,19 +31,25 @@ interface Ride {
   startedAtMs?: number;
   completedAtMs?: number;
   cancelledAtMs?: number;
+  cancelledBy?: string;
   cancelReason?: string;
+  paymentStatus?: string;
+  paymentIntentId?: string;
+  paymentAuthorizedAtMs?: number;
+  paymentCapturedAtMs?: number;
 }
 
 interface RideStatusProps {
   rideId: string;
   onRideCompleted: () => void;
   onRideRetry?: (newRideId: string) => void;
+  runtimeFlags: RuntimeFlags | null;
 }
 
 const RIDE_TIMELINE = ['requested', 'dispatching', 'offered', 'accepted', 'started', 'in_progress', 'completed'] as const;
-const CANCELLABLE_STATES = ['requested', 'dispatching', 'offered'];
+const CANCELLABLE_STATES = ['requested', 'dispatching', 'offered', 'accepted'];
 
-export function RideStatus({ rideId, onRideCompleted, onRideRetry }: RideStatusProps) {
+export function RideStatus({ rideId, onRideCompleted, onRideRetry, runtimeFlags }: RideStatusProps) {
   const { show } = useToast();
   const [authReady, setAuthReady] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -48,6 +59,9 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry }: RideStatusP
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const [searchTimeRemaining, setSearchTimeRemaining] = useState<number | null>(null);
+  const [showPaymentUI, setShowPaymentUI] = useState(false);
+  const [driverProfile, setDriverProfile] = useState<any>(null);
+  const [driverUser, setDriverUser] = useState<any>(null);
 
   // Route polyline (using shared hook)
   const { coords: routeLatLngs, distanceMeters } = useRoutePolyline(ride?.pickup, ride?.dropoff);
@@ -61,8 +75,12 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry }: RideStatusP
   // Memoize driver location to prevent unnecessary re-renders
   const driverLocation = useMemo(() => ride?.driverLocation || null, [ride?.driverLocation]);
   
-  // Debounce toasts to prevent jitter
-  const lastToastKeyRef = useRef<string>('');
+  // Calculate driver ETA to pickup (only when accepted/started, before in_progress)
+  const shouldShowEta = ride?.status === 'accepted' || ride?.status === 'started';
+  const driverEta = useDriverEta(
+    shouldShowEta ? driverLocation : null,
+    shouldShowEta ? ride?.pickup : null
+  );
 
   // Wait for auth to be ready before accessing Firestore
   useEffect(() => {
@@ -94,14 +112,6 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry }: RideStatusP
           // Determine if ride can be cancelled: only in specific states
           setCanCancel(CANCELLABLE_STATES.includes(rideData.status as string));
           setCancelError(null); // Clear any previous error when status updates
-
-          // If completed or cancelled (but not no_drivers), notify parent
-          if (rideData.status === 'completed') {
-            setTimeout(() => onRideCompleted(), 2000);
-          } else if (rideData.status === 'cancelled' && rideData.cancelReason !== 'no_drivers') {
-            // Only auto-return for cancellations other than no_drivers (which shows retry button)
-            setTimeout(() => onRideCompleted(), 2000);
-          }
         }
       },
       (error) => {
@@ -134,6 +144,40 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry }: RideStatusP
     return () => clearInterval(interval);
   }, [ride]);
 
+  // Load driver profile when driverId is available
+  useEffect(() => {
+    if (!ride?.driverId) {
+      setDriverProfile(null);
+      return;
+    }
+
+    const driverRef = doc(db, 'drivers', ride.driverId);
+    const unsubscribe = onSnapshot(driverRef, (snap) => {
+      if (snap.exists()) {
+        setDriverProfile(snap.data());
+      }
+    });
+
+    return () => unsubscribe();
+  }, [ride?.driverId]);
+
+  // Load driver user profile for name/email
+  useEffect(() => {
+    if (!ride?.driverId) {
+      setDriverUser(null);
+      return;
+    }
+
+    const userRef = doc(db, 'users', ride.driverId);
+    const unsubscribe = onSnapshot(userRef, (snap) => {
+      if (snap.exists()) {
+        setDriverUser(snap.data());
+      }
+    });
+
+    return () => unsubscribe();
+  }, [ride?.driverId]);
+
   const handleCancelRide = async () => {
     if (!canCancel) {
       const msg = 'Cannot cancel ride in current state';
@@ -142,23 +186,28 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry }: RideStatusP
       return;
     }
 
+    // Confirm cancellation
+    if (!window.confirm('Cancel this ride?')) {
+      return;
+    }
+
     setLoading(true);
     setCancelError(null);
     try {
       const cancelRideFn = httpsCallable(functions, 'cancelRide');
-      await cancelRideFn({ rideId, reason: 'Customer cancelled' });
-      show('Ride cancellation requested', 'success');
+      await cancelRideFn({ rideId, reason: 'Changed plans' });
+      show('Ride cancelled', 'success');
       setCanCancel(false);
     } catch (error: unknown) {
       const err = error as any;
       const errorMsg = err?.message || 'Unknown error';
       // Handle common Firebase/function errors gracefully
       let userMsg = errorMsg;
-      if (errorMsg.includes('PERMISSION_DENIED')) {
+      if (errorMsg.includes('permission-denied') || errorMsg.includes('PERMISSION_DENIED')) {
         userMsg = 'No permission to cancel this ride';
-      } else if (errorMsg.includes('NOT_FOUND')) {
+      } else if (errorMsg.includes('not-found') || errorMsg.includes('NOT_FOUND')) {
         userMsg = 'Ride not found';
-      } else if (errorMsg.includes('FAILED_PRECONDITION')) {
+      } else if (errorMsg.includes('failed-precondition') || errorMsg.includes('FAILED_PRECONDITION')) {
         userMsg = 'Ride cannot be cancelled in its current state';
       }
       setCancelError(userMsg);
@@ -246,6 +295,294 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry }: RideStatusP
           onNewRide={ride.status === 'completed' ? () => onRideCompleted() : undefined}
         />
 
+        {/* Payment Authorization UI */}
+        {ride.status === 'accepted' && 
+         ride.paymentStatus !== 'authorized' && 
+         ride.paymentStatus !== 'captured' && 
+         !showPaymentUI && (
+          <div style={{
+            padding: '1.5rem',
+            marginBottom: '1rem',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(255,193,7,0.1)',
+            border: '1px solid rgba(255,193,7,0.3)',
+          }}>
+            <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: 'rgba(255,193,7,0.95)' }}>
+              ⚠️ Payment Authorization Required
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginBottom: '1rem' }}>
+              Please authorize payment to begin your ride.
+            </p>
+            <button
+              onClick={() => setShowPaymentUI(true)}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: 'rgba(0,255,140,0.95)',
+                color: '#000',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.95rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              Authorize Payment
+            </button>
+          </div>
+        )}
+
+        {showPaymentUI && ride.priceCents && (
+          <div style={{
+            marginBottom: '1rem',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            <PaymentAuthorize
+              rideId={ride.id}
+              amount={ride.priceCents}
+              onSuccess={() => {
+                setShowPaymentUI(false);
+                show('Payment authorized! Your ride will begin soon.', 'success');
+              }}
+              disabled={runtimeFlags?.disablePayments || false}
+            />
+          </div>
+        )}
+
+        {/* Receipt - shown when ride is completed */}
+        {ride.status === 'completed' && ride.finalAmountCents && (
+          <div style={{ marginBottom: '1rem' }}>
+            <Receipt
+              rideId={ride.id}
+              pickup={ride.pickup}
+              dropoff={ride.dropoff}
+              finalAmountCents={ride.finalAmountCents}
+              paymentStatus={ride.paymentStatus}
+              completedAtMs={ride.completedAtMs}
+              driverId={ride.driverId}
+            />
+          </div>
+        )}
+
+        {/* Cancellation Receipt - shown when ride is cancelled */}
+        {ride.status === 'cancelled' && (
+          <div style={{
+            padding: '1.5rem',
+            borderRadius: '12px',
+            backgroundColor: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            marginBottom: '1rem',
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '1.5rem',
+              paddingBottom: '1rem',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>❌</div>
+              <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', color: '#fff' }}>
+                Ride Cancelled
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>
+                {ride.cancelledAtMs && new Date(ride.cancelledAtMs).toLocaleDateString()} • {ride.cancelledAtMs && new Date(ride.cancelledAtMs).toLocaleTimeString()}
+              </p>
+            </div>
+
+            {/* Trip Details */}
+            {(ride.pickup || ride.dropoff) && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{
+                  display: 'flex',
+                  gap: '1rem',
+                  marginBottom: '1rem',
+                }}>
+                  <div style={{
+                    width: '32px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    paddingTop: '4px',
+                  }}>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(0,255,140,0.95)',
+                      marginBottom: '4px',
+                    }} />
+                    <div style={{
+                      width: '2px',
+                      flex: 1,
+                      backgroundColor: 'rgba(255,255,255,0.2)',
+                      marginBottom: '4px',
+                    }} />
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '2px',
+                      backgroundColor: '#ef4444',
+                    }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    {ride.pickup && (
+                      <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>
+                          Pickup
+                        </div>
+                        <div style={{ fontSize: '0.9rem', color: '#fff' }}>
+                          {ride.pickup.lat.toFixed(4)}, {ride.pickup.lng.toFixed(4)}
+                        </div>
+                      </div>
+                    )}
+                    {ride.dropoff && (
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>
+                          Dropoff
+                        </div>
+                        <div style={{ fontSize: '0.9rem', color: '#fff' }}>
+                          {ride.dropoff.lat.toFixed(4)}, {ride.dropoff.lng.toFixed(4)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Cancellation Details */}
+            <div style={{
+              padding: '1rem',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(239,68,68,0.05)',
+              border: '1px solid rgba(239,68,68,0.2)',
+              marginBottom: '1rem',
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '0.5rem',
+              }}>
+                <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>
+                  Cancelled By
+                </span>
+                <span style={{
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  color: '#fff',
+                  textTransform: 'capitalize',
+                }}>
+                  {ride.cancelledBy || 'Unknown'}
+                </span>
+              </div>
+              {ride.cancelReason && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '0.5rem',
+                }}>
+                  <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)' }}>
+                    Reason
+                  </span>
+                  <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>
+                    {ride.cancelReason}
+                  </span>
+                </div>
+              )}
+              {ride.paymentStatus === 'cancelled' && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingTop: '0.5rem',
+                  borderTop: '1px solid rgba(255,255,255,0.1)',
+                }}>
+                  <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)' }}>
+                    Payment Status
+                  </span>
+                  <span style={{
+                    fontSize: '0.9rem',
+                    color: '#10b981',
+                    fontWeight: '500',
+                  }}>
+                    ✓ Authorization Released
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Ride ID */}
+            <div style={{
+              fontSize: '0.75rem',
+              color: 'rgba(255,255,255,0.4)',
+              textAlign: 'center',
+            }}>
+              Ride ID: {ride.id.slice(0, 8)}...
+            </div>
+          </div>
+        )}
+
+        {/* Driver ETA Display - show when accepted/started */}
+        {shouldShowEta && driverLocation && (
+          <div style={{
+            marginBottom: '1rem',
+            padding: '16px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(96,165,250,0.1)',
+            border: '1px solid rgba(96,165,250,0.3)',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              <div>
+                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginBottom: '4px' }}>
+                  🚗 Driver is on the way
+                </div>
+                <div style={{ fontSize: '1.1rem', fontWeight: '600', color: '#60a5fa' }}>
+                  {driverEta.loading ? (
+                    'Calculating...'
+                  ) : driverEta.minutes != null ? (
+                    `${driverEta.minutes} min away`
+                  ) : (
+                    'Arriving soon'
+                  )}
+                </div>
+                {driverEta.miles != null && !driverEta.loading && (
+                  <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
+                    {driverEta.miles.toFixed(1)} mi
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: '2rem' }}>📍</div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Status Badge */}
+        {ride.paymentStatus && ride.status === 'accepted' && (
+          <div style={{
+            marginBottom: '1rem',
+            padding: '12px',
+            borderRadius: '8px',
+            backgroundColor: ride.paymentStatus === 'authorized' ? 'rgba(0,255,140,0.1)' : 'rgba(255,193,7,0.1)',
+            border: ride.paymentStatus === 'authorized' ? '1px solid rgba(0,255,140,0.3)' : '1px solid rgba(255,193,7,0.3)',
+          }}>
+            <div style={{
+              fontSize: '0.85rem',
+              color: ride.paymentStatus === 'authorized' ? 'rgba(0,255,140,0.95)' : 'rgba(255,193,7,0.95)',
+            }}>
+              {ride.paymentStatus === 'authorized' && '✅ Payment Authorized - Waiting for driver to start'}
+              {ride.paymentStatus === 'requires_payment_method' && '⏳ Waiting for payment authorization'}
+              {ride.paymentStatus === 'requires_action' && '⚠️ Payment requires action'}
+              {ride.paymentStatus === 'failed' && '❌ Payment failed'}
+            </div>
+          </div>
+        )}
+
         {/* Cancel Error */}
         {cancelError && (
           <div
@@ -310,7 +647,69 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry }: RideStatusP
 
         {/* Additional Details */}
         <div className="ride-status-grid">
-          {ride.driverId && (
+          {ride.driverId && driverProfile && (
+            <div className="status-item" style={{
+              gridColumn: '1 / -1',
+              padding: '1rem',
+              backgroundColor: 'rgba(34,197,94,0.1)',
+              border: '1px solid rgba(34,197,94,0.3)',
+              borderRadius: '8px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {/* Driver Photo */}
+                <div style={{
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  border: '2px solid rgba(34,197,94,0.5)',
+                  flexShrink: 0,
+                }}>
+                  {driverProfile.photoURL ? (
+                    <img src={driverProfile.photoURL} alt="Driver" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
+                      👤
+                    </div>
+                  )}
+                </div>
+
+                {/* Driver Info */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '600', fontSize: '1.1rem', marginBottom: '0.25rem' }}>
+                    {driverUser?.displayName ? driverUser.displayName.split(' ')[0] : driverUser?.email ? driverUser.email.split('@')[0] : 'Your Driver'}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>
+                    ID: {ride.driverId.slice(0, 8)}
+                  </div>
+                  {driverProfile.ratingAvg && driverProfile.ratingCount && driverProfile.ratingCount > 0 && (
+                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginTop: '0.25rem' }}>
+                      ⭐ {driverProfile.ratingAvg.toFixed(1)} ({driverProfile.ratingCount} rides)
+                    </div>
+                  )}
+                </div>
+
+                {/* Vehicle Info */}
+                {driverProfile.vehicleInfo && (
+                  <div style={{
+                    padding: '0.75rem',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    borderRadius: '6px',
+                    fontSize: '0.85rem',
+                  }}>
+                    <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>🚗 Vehicle</div>
+                    <div>{driverProfile.vehicleInfo.color} {driverProfile.vehicleInfo.make} {driverProfile.vehicleInfo.model}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.7)', marginTop: '0.25rem' }}>
+                      {driverProfile.vehicleInfo.plate}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {ride.driverId && !driverProfile && (
             <div className="status-item">
               <span className="label">Driver ID</span>
               <span className="value">{ride.driverId}</span>
@@ -362,20 +761,11 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry }: RideStatusP
               </span>
             </div>
           )}
-
-          {ride.cancelledAtMs && (
-            <div className="status-item">
-              <span className="label">Cancelled</span>
-              <span className="value" style={{ fontSize: '0.85rem' }}>
-                {new Date(ride.cancelledAtMs).toLocaleString()}
-              </span>
-            </div>
-          )}
         </div>
 
-        {/* Event Timeline */}
+        {/* Event Timeline - Render with stable rideId key */}
         <div style={{ marginTop: '24px' }}>
-          <RideTimeline rideId={rideId} />
+          <RideTimeline key={rideId} rideId={rideId} />
         </div>
       </div>
     </div>

@@ -1,0 +1,28 @@
+{
+  "name": "shiftx",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:customer": "cd packages/customer-app && npm run build",
+    "build:driver": "cd packages/driver-app && npm run build",
+    "build:functions": "cd functions && npm run build",
+    "build:all": "npm run build:customer && npm run build:driver && npm run build:functions",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:customer": "firebase deploy --only hosting:customer",
+    "deploy:driver": "firebase deploy --only hosting:driver",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:indexes": "firebase deploy --only firestore:indexes",
+    "deploy:all": "npm run build:all && firebase deploy",
+    "test:e2e": "ts-node --project tsconfig.scripts.json scripts/test-ride-e2e.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.8",
+    "firebase-admin": "^13.6.0",
+    "firebase-tools": "^13.0.0",
+    "ts-node": "^10.9.2"
+  },
+  "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated"
+  }
+}

@@ -1,15 +1,17 @@
 import { initializeApp } from 'firebase/app';
 import { connectFunctionsEmulator, getFunctions, httpsCallable, } from 'firebase/functions';
-import { connectFirestoreEmulator, collectionGroup, doc, getFirestore, onSnapshot, query, where, } from 'firebase/firestore';
+import { connectFirestoreEmulator, collectionGroup, doc, getFirestore, onSnapshot, query, where, limit, orderBy, } from 'firebase/firestore';
+import { connectStorageEmulator, getStorage, } from 'firebase/storage';
 const DRIVER_CLIENT_APP_NAME = 'shiftx-driver-client';
 let driverApp = null;
 let driverFunctions = null;
 let driverFirestore = null;
+let driverStorage = null;
 function ensureClients() {
-    if (!driverFunctions || !driverFirestore) {
+    if (!driverFunctions || !driverFirestore || !driverStorage) {
         throw new Error('Driver client is not initialized. Call initDriverClient first.');
     }
-    return { functions: driverFunctions, firestore: driverFirestore };
+    return { functions: driverFunctions, firestore: driverFirestore, storage: driverStorage };
 }
 export function initDriverClient(config) {
     if (!driverApp) {
@@ -29,10 +31,18 @@ export function initDriverClient(config) {
             connectFunctionsEmulator(driverFunctions, config.emulator.functionsHost, config.emulator.functionsPort);
         }
     }
+    // Get Storage and connect to emulator immediately
+    if (!driverStorage) {
+        driverStorage = getStorage(driverApp);
+        if (config.emulator?.storageHost && config.emulator?.storagePort) {
+            connectStorageEmulator(driverStorage, config.emulator.storageHost, config.emulator.storagePort);
+        }
+    }
     return {
         app: driverApp,
         functions: driverFunctions,
         firestore: driverFirestore,
+        storage: driverStorage,
     };
 }
 async function callFunction(name, data) {
@@ -45,7 +55,7 @@ export async function driverSetOnline(online) {
     return callFunction('driverSetOnline', { online });
 }
 export async function driverHeartbeat(location) {
-    return callFunction('driverHeartbeat', { location });
+    return callFunction('driverHeartbeat', location);
 }
 export async function tripAccept(rideId) {
     return callFunction('acceptRide', { rideId });
@@ -100,23 +110,32 @@ export function watchRide(rideId, onChange, onError) {
 }
 export function watchDriverOffers(driverId, onOffers, onError) {
     const { firestore } = ensureClients();
-    const offersQuery = query(collectionGroup(firestore, 'offers'), where('driverId', '==', driverId));
+    // Only watch pending offers (status == 'pending') and limit to 20 most recent
+    const offersQuery = query(collectionGroup(firestore, 'offers'), where('driverId', '==', driverId), where('status', '==', 'pending'), orderBy('createdAtMs', 'desc'), limit(20));
     return onSnapshot(offersQuery, (snapshot) => {
-        const entries = snapshot.docs.map((offerDoc) => ({
+        const now = Date.now();
+        // Client-side filter: only include non-expired offers
+        const entries = snapshot.docs
+            .map((offerDoc) => ({
             rideId: offerDoc.ref.parent?.parent?.id ?? '',
             offer: { ...offerDoc.data(), rideId: offerDoc.ref.parent?.parent?.id ?? '' },
-        }));
+        }))
+            .filter((entry) => {
+            const expiresAtMs = entry.offer.expiresAtMs || 0;
+            return expiresAtMs > now;
+        });
         onOffers(entries);
     }, onError);
 }
 export function getInitializedClient() {
-    if (!driverApp || !driverFunctions || !driverFirestore) {
+    if (!driverApp || !driverFunctions || !driverFirestore || !driverStorage) {
         throw new Error('Driver client not initialized');
     }
     return {
         app: driverApp,
         functions: driverFunctions,
         firestore: driverFirestore,
+        storage: driverStorage,
     };
 }
 export const DEFAULT_EMULATOR_CONFIG = {
@@ -124,4 +143,6 @@ export const DEFAULT_EMULATOR_CONFIG = {
     firestorePort: 8081,
     functionsHost: 'localhost',
     functionsPort: 5002,
+    storageHost: 'localhost',
+    storagePort: 9199,
 };

@@ -11,6 +11,7 @@ interface RoutePolylineResult {
   loading: boolean;
   error?: string;
   distanceMeters?: number;
+  durationSeconds?: number;
 }
 
 export function useRoutePolyline(
@@ -21,6 +22,7 @@ export function useRoutePolyline(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
   const [distanceMeters, setDistanceMeters] = useState<number | undefined>(undefined);
+  const [durationSeconds, setDurationSeconds] = useState<number | undefined>(undefined);
   
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastKeyRef = useRef<string>('');
@@ -31,6 +33,7 @@ export function useRoutePolyline(
       setLoading(false);
       setError(undefined);
       setDistanceMeters(undefined);
+      setDurationSeconds(undefined);
       lastKeyRef.current = '';
       return;
     }
@@ -61,6 +64,7 @@ export function useRoutePolyline(
           console.log('OSRM route points', route.latlngs.length);
           setCoords(route.latlngs);
           setDistanceMeters(route.distanceMeters);
+          setDurationSeconds(route.durationSeconds);
           setLoading(false);
         }
       } catch (err) {
@@ -68,6 +72,7 @@ export function useRoutePolyline(
           console.error('OSRM route failed', err);
           setError(err instanceof Error ? err.message : 'Route fetch failed');
           setDistanceMeters(undefined);
+          setDurationSeconds(undefined);
           // Fallback to straight line
           const straightLine: [number, number][] = [
             [pickup.lat, pickup.lng],
@@ -85,5 +90,5 @@ export function useRoutePolyline(
     };
   }, [pickup, dropoff]);
 
-  return { coords, loading, error, distanceMeters };
+  return { coords, loading, error, distanceMeters, durationSeconds };
 }

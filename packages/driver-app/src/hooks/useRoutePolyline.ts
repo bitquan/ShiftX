@@ -27,6 +27,7 @@ export function useRoutePolyline(
 
   useEffect(() => {
     if (!pickup || !dropoff) {
+      console.log('[useRoutePolyline] No pickup or dropoff:', { pickup, dropoff });
       setCoords(null);
       setLoading(false);
       setError(undefined);
@@ -37,10 +38,13 @@ export function useRoutePolyline(
 
     // Create stable key to prevent refetch on same coordinates
     const key = `${pickup.lat},${pickup.lng}-${dropoff.lat},${dropoff.lng}`;
+    console.log('[useRoutePolyline] Route key:', key);
     if (key === lastKeyRef.current) {
+      console.log('[useRoutePolyline] Already fetched this route, skipping');
       return; // Already fetched this route
     }
-    lastKeyRef.current = key;
+    
+    // DON'T set lastKeyRef yet - only after successful fetch
 
     // Abort previous request
     if (abortControllerRef.current) {
@@ -51,6 +55,7 @@ export function useRoutePolyline(
     abortControllerRef.current = controller;
 
     const timeoutId = setTimeout(async () => {
+      console.log('[useRoutePolyline] Starting route fetch for:', pickup, '->', dropoff);
       setLoading(true);
       setError(undefined);
       
@@ -58,14 +63,16 @@ export function useRoutePolyline(
         const route = await fetchOsrmRoute(pickup, dropoff);
         
         if (!controller.signal.aborted) {
-          console.log('OSRM route points', route.latlngs.length);
+          console.log('[useRoutePolyline] OSRM route success:', route.latlngs.length, 'points');
           setCoords(route.latlngs);
           setDistanceMeters(route.distanceMeters);
           setLoading(false);
+          // NOW set lastKeyRef after successful fetch
+          lastKeyRef.current = key;
         }
       } catch (err) {
         if (!controller.signal.aborted) {
-          console.error('OSRM route failed', err);
+          console.error('[useRoutePolyline] OSRM route failed:', err);
           setError(err instanceof Error ? err.message : 'Route fetch failed');
           setDistanceMeters(undefined);
           // Fallback to straight line
@@ -73,8 +80,11 @@ export function useRoutePolyline(
             [pickup.lat, pickup.lng],
             [dropoff.lat, dropoff.lng],
           ];
+          console.log('[useRoutePolyline] Using straight line fallback');
           setCoords(straightLine);
           setLoading(false);
+          // Set lastKeyRef even on error (with fallback coords)
+          lastKeyRef.current = key;
         }
       }
     }, 250);

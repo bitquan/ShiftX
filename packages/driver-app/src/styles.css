@@ -148,65 +148,64 @@ button.primary-button:hover:not(:disabled) {
 .driver-home {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
-.driver-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 20px;
+/* Control Center Cards */
+.control-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 16px;
 }
 
-.driver-info {
-  flex: 1;
+.control-button {
+  transition: opacity 0.2s, transform 0.1s;
 }
 
-.driver-id {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
+.control-button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
-.driver-status {
-  margin: 0;
-  font-size: 16px;
+.quick-action-button {
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.status-badge {
+.quick-action-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.quick-action-button:active {
+  transform: scale(0.98);
+}
+
+/* Status Pills */
+.status-pill {
   display: inline-block;
-  padding: 4px 12px;
+  padding: 6px 12px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 0.85rem;
   font-weight: 600;
 }
 
-.status-badge.online {
-  background: rgba(74, 222, 128, 0.1);
-  color: #4ade80;
+.status-pill.online {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
 }
 
-.status-badge.offline {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-.toggle-button {
-  padding: 12px 24px;
-  font-size: 16px;
-  white-space: nowrap;
-}
-
-.toggle-button.going-offline {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-}
-
-.toggle-button.going-online {
-  background: linear-gradient(135deg, #4ade80, #22c55e);
-  color: #020409;
+.status-pill.offline {
+  background: rgba(156, 163, 175, 0.15);
+  color: #9ca3af;
 }
 
 .info-banner {
@@ -274,14 +273,21 @@ button.primary-button:hover:not(:disabled) {
 }
 
 .offer-header h2 {
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
   font-size: 24px;
+  font-weight: 700;
 }
 
-.ride-id {
+.ride-id-muted {
   margin: 0;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.ride-id-muted code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .offer-details {
@@ -289,23 +295,69 @@ button.primary-button:hover:not(:disabled) {
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .detail-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
+  align-items: flex-start;
+  padding: 10px 0;
   font-size: 14px;
+  gap: 16px;
+}
+
+.detail-row:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.detail-row.highlight {
+  background: rgba(16, 185, 129, 0.08);
+  margin: -4px -12px 8px -12px;
+  padding: 12px;
+  border-radius: 8px;
+  border-bottom: none;
 }
 
 .detail-row .label {
   color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.detail-row.highlight .label {
+  color: rgba(16, 185, 129, 0.9);
+  font-weight: 600;
 }
 
 .detail-row .value {
-  font-weight: 600;
-  color: #ffd069;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
+  text-align: right;
+  line-height: 1.4;
+}
+
+.detail-row .value.address {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.detail-row .value.fare {
+  color: #10b981;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.detail-row .value .resolving {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+
+.detail-row .value .coords-fallback {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'Courier New', monospace;
 }
 
 .countdown {
@@ -313,49 +365,81 @@ button.primary-button:hover:not(:disabled) {
 }
 
 .countdown-bar {
-  height: 4px;
+  height: 6px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .countdown-progress {
   height: 100%;
-  background: linear-gradient(90deg, #4ade80, #22c55e);
+  background: linear-gradient(90deg, #10b981, #059669);
   transition: width 0.1s linear;
 }
 
 .countdown.expiring .countdown-progress {
   background: linear-gradient(90deg, #ef4444, #dc2626);
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.7;
+  }
 }
 
 .countdown-text {
   margin: 0;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
   text-align: center;
+  font-weight: 500;
+}
+
+.countdown.expiring .countdown-text {
+  color: #ef4444;
   font-weight: 600;
 }
 
 .offer-actions {
   display: flex;
-  flex-direction: column;
   gap: 12px;
 }
 
+.decline-button {
+  flex: 1;
+  padding: 12px 20px !important;
+  font-size: 15px !important;
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.decline-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
 .accept-button {
-  padding: 12px 24px !important;
+  flex: 2;
+  padding: 14px 24px !important;
   font-size: 16px !important;
   margin: 0 !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 /* Active ride */
 .active-ride {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 24px;
+  background: transparent;
+  padding: 0 24px 80px 24px;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .ride-header {
@@ -680,3 +764,520 @@ code {
   cursor: not-allowed;
 }
 
+/* Driver Status Card */
+.driver-status-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.status-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.driver-id {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'Courier New', monospace;
+}
+
+.status-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.status-pill.status-online {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.status-pill.status-offline {
+  background: rgba(156, 163, 175, 0.15);
+  color: #9ca3af;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.gps-status {
+  text-align: center;
+}
+
+.gps-text {
+  font-size: 13px;
+  display: block;
+}
+
+.gps-success-box,
+.gps-error-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.gps-time-ago {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.gps-loading {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.gps-success {
+  color: #10b981;
+  font-family: 'Courier New', monospace;
+}
+
+.gps-error {
+  color: #ef4444;
+}
+
+.gps-retry-btn {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  padding: 6px 16px !important;
+  font-size: 12px !important;
+  border-radius: 6px !important;
+  margin: 0 !important;
+}
+
+.gps-retry-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.25) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn-toggle-online {
+  width: 100%;
+  padding: 14px 24px !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  transition: all 0.2s !important;
+}
+
+.btn-go-online {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: white !important;
+}
+
+.btn-go-offline {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #ef4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Active Ride Header */
+.active-ride-header {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.ride-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ride-status-pill {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.ride-id-small {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'Courier New', monospace;
+}
+
+.ride-route {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.route-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.route-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.route-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.route-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.route-address {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+}
+
+.route-divider {
+  width: 2px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  margin-left: 7px;
+}
+
+/* GPS Mini Status */
+.gps-mini-status {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.gps-live {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.gps-loading {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.gps-error {
+  color: #ef4444;
+}
+
+/* Payment Waiting Banner */
+.payment-waiting-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.payment-waiting-icon {
+  font-size: 16px;
+}
+
+.payment-waiting-text {
+  color: #fbbf24;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.ride-actions-row {
+  display: flex;
+  gap: 12px;
+}
+
+.navigate-btn {
+  flex: 1;
+  padding: 12px 20px !important;
+  font-size: 14px !important;
+}
+
+.action-btn-wide {
+  flex: 2;
+  padding: 14px 24px !important;
+  font-size: 16px !important;
+}
+
+/* Offer Modal: Earnings Highlight */
+.detail-row.highlight-earnings {
+  background: linear-gradient(135deg, rgba(255, 183, 3, 0.12), rgba(251, 139, 36, 0.12));
+  margin: 8px -12px;
+  padding: 14px;
+  border-radius: 10px;
+  border-bottom: none;
+}
+
+.detail-row.highlight-earnings .label {
+  color: rgba(255, 183, 3, 0.95);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.detail-row .value.earnings {
+  color: #ffb703;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+/* Admin Panel */
+.admin-panel {
+  padding: 20px;
+  padding-bottom: 80px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.admin-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.refresh-button {
+  padding: 8px 16px;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  border-radius: 8px;
+  color: #60a5fa;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.refresh-button:hover {
+  background: rgba(96, 165, 250, 0.2);
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #60a5fa;
+}
+
+.drivers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.driver-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.driver-card.unapproved {
+  border-color: rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.05);
+}
+
+.driver-info {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex: 1;
+}
+
+.driver-photo {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(96, 165, 250, 0.5);
+  flex-shrink: 0;
+}
+
+.driver-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 1.5rem;
+}
+
+.driver-details {
+  flex: 1;
+}
+
+.driver-email {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.driver-id {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 4px;
+}
+
+.driver-vehicle {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 8px 0;
+}
+
+.driver-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge.online {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge.class {
+  background: rgba(96, 165, 250, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.badge.date {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.driver-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.approve-button,
+.disable-button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.approve-button {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.approve-button:hover {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+.disable-button {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.disable-button:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.approve-button:disabled,
+.disable-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-loading,
+.admin-unauthorized,
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.admin-unauthorized h2 {
+  color: #ef4444;
+  margin-bottom: 8px;
+}

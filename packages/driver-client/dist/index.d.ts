@@ -1,6 +1,7 @@
 import { FirebaseApp, FirebaseOptions } from 'firebase/app';
 import { Functions } from 'firebase/functions';
 import { Firestore, Unsubscribe } from 'firebase/firestore';
+import { FirebaseStorage } from 'firebase/storage';
 import { DriverProfile, RideOffer, TripCancelPayload, TripRequestData, TripRequestResult, TripUpdateStatus, UserProfile, CreateTestRideData } from './types';
 export interface DriverClientConfig {
     firebaseConfig: FirebaseOptions;
@@ -9,12 +10,15 @@ export interface DriverClientConfig {
         firestorePort: number;
         functionsHost: string;
         functionsPort: number;
+        storageHost?: string;
+        storagePort?: number;
     };
 }
 export interface InitializedDriverClient {
     app: FirebaseApp;
     functions: Functions;
     firestore: Firestore;
+    storage: FirebaseStorage;
 }
 export declare function initDriverClient(config: DriverClientConfig): InitializedDriverClient;
 export declare function driverSetOnline(online: boolean): Promise<{
@@ -58,6 +62,8 @@ export declare const DEFAULT_EMULATOR_CONFIG: {
     firestorePort: number;
     functionsHost: string;
     functionsPort: number;
+    storageHost: string;
+    storagePort: number;
 };
 export type { CreateTestRideData, DriverProfile, Ride, RideOffer, TripCancelPayload, TripRequestData, TripRequestResult, TripUpdateStatus, UserProfile, } from './types';
 //# sourceMappingURL=index.d.ts.map

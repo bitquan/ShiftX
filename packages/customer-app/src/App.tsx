@@ -1,16 +1,27 @@
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { AuthGate } from './components/AuthGate';
 import { RequestRide } from './components/RequestRide';
 import { RideStatus } from './components/RideStatus';
 import { RideHistory } from './components/RideHistory';
 import { Invite } from './components/Invite';
+import { Profile } from './components/Profile';
+import { CustomerWallet } from './components/CustomerWallet';
 import { ToastProvider } from './components/Toast';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { DebugPanel } from './components/DebugPanel';
+import { DiagnosticsPanel } from './components/DiagnosticsPanel';
+import { ProdDiagnostics } from './components/ProdDiagnostics';
+import { validateProductionConfig, showConfigErrorModal } from './utils/configValidation';
+import { RebookPayload } from './types/rebook';
+import { MaintenanceBanner } from './components/MaintenanceBanner';
+import { watchRuntimeFlags, RuntimeFlags } from './utils/runtimeFlags';
+import { logStripeMode } from './utils/stripeMode';
 import './styles.css';
 
-type AppState = 'request-ride' | 'ride-status' | 'ride-history' | 'invite';
+type AppState = 'request-ride' | 'ride-status' | 'ride-history' | 'wallet' | 'invite';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -19,6 +30,25 @@ export default function App() {
   const [onboardingStatus, setOnboardingStatus] = useState<'pending' | 'active' | 'suspended' | null>(null);
   const [rideId, setRideId] = useState<string | null>(null);
   const [inviteDriverId, setInviteDriverId] = useState<string | null>(null);
+  const [rebookPayload, setRebookPayload] = useState<RebookPayload | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
+  const [userPhotoURL, setUserPhotoURL] = useState<string | null>(null);
+  const [runtimeFlags, setRuntimeFlags] = useState<RuntimeFlags | null>(null);
+
+  // Log Stripe mode on startup
+  useEffect(() => {
+    logStripeMode();
+  }, []);
+
+  // Validate configuration on startup
+  useEffect(() => {
+    const validation = validateProductionConfig();
+    if (!validation.valid) {
+      showConfigErrorModal(validation);
+    } else if (validation.warnings.length > 0) {
+      console.warn('Configuration warnings:', validation.warnings);
+    }
+  }, []);
 
   // Check for invite route on mount
   useEffect(() => {
@@ -50,6 +80,10 @@ export default function App() {
               createdAtMs: Date.now(),
               role: 'customer',
             });
+            setUserPhotoURL(null);
+          } else {
+            // Load photoURL from user profile
+            setUserPhotoURL(userSnap.data()?.photoURL || null);
           }
 
           const customerRef = doc(db, 'customers', customer.uid);
@@ -74,8 +108,19 @@ export default function App() {
         localStorage.removeItem('rideId');
         setRideId(null);
         setOnboardingStatus(null);
+        setUserPhotoURL(null);
       }
     });
+    return () => unsubscribe();
+  }, []);
+
+  // Runtime flags listener
+  useEffect(() => {
+    const unsubscribe = watchRuntimeFlags((flags) => {
+      console.log('[App] Runtime flags updated:', flags);
+      setRuntimeFlags(flags);
+    });
+
     return () => unsubscribe();
   }, []);
 
@@ -87,6 +132,20 @@ export default function App() {
       setAppState('ride-status');
     }
   }, [user, onboardingStatus]);
+
+  // Subscribe to user profile changes (for photoURL updates)
+  useEffect(() => {
+    if (!user) return;
+    
+    const userRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(userRef, (snap) => {
+      if (snap.exists()) {
+        setUserPhotoURL(snap.data()?.photoURL || null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const handleRideRequested = (newRideId: string) => {
     setRideId(newRideId);
@@ -118,15 +177,31 @@ export default function App() {
   };
 
   const handleSelectHistoricalRide = (selectedRideId: string) => {
-    // Just set the ride ID without changing state - history view will show the details
+    // Navigate to ride-status view to show full details
     setRideId(selectedRideId);
+    setAppState('ride-status');
+  };
+
+  const handleRequestAgain = (
+    pickup: { lat: number; lng: number }, 
+    dropoff: { lat: number; lng: number },
+    serviceClass?: string
+  ) => {
+    // Create rebook payload and navigate to request screen
+    const payload: RebookPayload = {
+      pickup: { lat: pickup.lat, lng: pickup.lng },
+      dropoff: { lat: dropoff.lat, lng: dropoff.lng },
+      serviceClass: (serviceClass as 'shiftx' | 'shift_lx' | 'shift_black') || undefined,
+    };
+    setRebookPayload(payload);
+    setAppState('request-ride');
   };
 
   // Show onboarding screens if not active
   if (user && onboardingStatus && onboardingStatus !== 'active') {
     return (
       <ToastProvider>
-        <AuthGate user={user} auth={auth} loading={isLoadingAuth}>
+        <AuthGate user={user} auth={auth} loading={isLoadingAuth} userPhotoURL={userPhotoURL} onProfileClick={() => setShowProfile(true)}>
           <div className="screen-container">
             <div className="card">
               <h2>Account Status: {onboardingStatus}</h2>
@@ -142,18 +217,28 @@ export default function App() {
   }
 
   return (
-    <ToastProvider>
-      <AuthGate user={user} auth={auth} loading={isLoadingAuth}>
-        {appState === 'invite' && (
-          <Invite driverId={inviteDriverId} onComplete={handleInviteComplete} />
+    <ErrorBoundary>
+      <ToastProvider>
+        {runtimeFlags?.maintenanceMessage && (
+          <MaintenanceBanner message={runtimeFlags.maintenanceMessage} type="warning" />
         )}
+        <AuthGate user={user} auth={auth} loading={isLoadingAuth} userPhotoURL={userPhotoURL} onProfileClick={() => setShowProfile(true)}>
+          {appState === 'invite' && (
+            <Invite driverId={inviteDriverId} onComplete={handleInviteComplete} />
+          )}
 
         {user && onboardingStatus === 'active' && (
           <>
             {appState === 'request-ride' && (
               <>
-                <RequestRide onRideRequested={handleRideRequested} />
-                <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                <RequestRide 
+                  onRideRequested={handleRideRequested}
+                  rebookPayload={rebookPayload}
+                  onRebookConsumed={() => setRebookPayload(null)}
+                  userPhotoURL={userPhotoURL}
+                  runtimeFlags={runtimeFlags}
+                />
+                <div style={{ marginTop: '1rem', textAlign: 'center', display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
                   <button
                     onClick={handleViewHistory}
                     style={{
@@ -166,7 +251,21 @@ export default function App() {
                       fontSize: '1rem',
                     }}
                   >
-                    📋 View Ride History
+                    📋 Ride History
+                  </button>
+                  <button
+                    onClick={() => setAppState('wallet')}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      color: 'white',
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      fontSize: '1rem',
+                    }}
+                  >
+                    💳 Wallet
                   </button>
                 </div>
               </>
@@ -189,18 +288,31 @@ export default function App() {
                     ← Back to Request
                   </button>
                 </div>
-                <RideHistory onSelectRide={handleSelectHistoricalRide} />
-                
-                {/* Show selected ride details below history */}
-                {rideId && (
-                  <div style={{ marginTop: '2rem' }}>
-                    <RideStatus
-                      rideId={rideId}
-                      onRideCompleted={() => setRideId(null)}
-                      onRideRetry={handleRideRetry}
-                    />
-                  </div>
-                )}
+                <RideHistory 
+                  onSelectRide={handleSelectHistoricalRide} 
+                  onRequestAgain={handleRequestAgain}
+                />
+              </>
+            )}
+            {appState === 'wallet' && (
+              <>
+                <div style={{ marginBottom: '1rem' }}>
+                  <button
+                    onClick={handleBackToRequest}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      color: 'white',
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      fontSize: '1rem',
+                    }}
+                  >
+                    ← Back to Request
+                  </button>
+                </div>
+                <CustomerWallet />
               </>
             )}
             {appState === 'ride-status' && rideId && (
@@ -225,12 +337,20 @@ export default function App() {
                   rideId={rideId}
                   onRideCompleted={handleRideCompleted}
                   onRideRetry={handleRideRetry}
+                  runtimeFlags={runtimeFlags}
                 />
               </>
             )}
           </>
         )}
+
+        {/* Profile Modal */}
+        {showProfile && <Profile onClose={() => setShowProfile(false)} />}
       </AuthGate>
+      <ProdDiagnostics />
+      <DebugPanel />
+      <DiagnosticsPanel user={user} />
     </ToastProvider>
+    </ErrorBoundary>
   );
 }

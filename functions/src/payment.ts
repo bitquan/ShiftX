@@ -319,6 +319,14 @@ export const customerConfirmPayment = onCall<{ rideId: string }>(
           capture_method: paymentIntent.capture_method,
           connect: useConnect,
         });
+        
+        // Log Connect routing details for verification
+        if (useConnect && driverAccountId) {
+          console.log('[customerConfirmPayment] ✅ CONNECT ROUTING:', {
+            connectDestination: driverAccountId,
+            application_fee_amount: fees.platformFeeCents,
+          });
+        }
 
         // Save payment intent ID and fee breakdown to ride using transaction
         // to ensure only one PI gets saved even if called concurrently

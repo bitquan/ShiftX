@@ -19,6 +19,7 @@ import { RebookPayload } from './types/rebook';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
 import { watchRuntimeFlags, RuntimeFlags } from './utils/runtimeFlags';
 import { logStripeMode } from './utils/stripeMode';
+import { EnvironmentBadge } from './components/EnvironmentBadge';
 import './styles.css';
 
 type AppState = 'request-ride' | 'ride-status' | 'ride-history' | 'wallet' | 'invite';
@@ -219,6 +220,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
+        <EnvironmentBadge />
         {runtimeFlags?.maintenanceMessage && (
           <MaintenanceBanner message={runtimeFlags.maintenanceMessage} type="warning" />
         )}

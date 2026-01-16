@@ -6,10 +6,15 @@
   "description": "Capacitor iOS wrapper for ShiftX Customer web app",
   "scripts": {
     "build:web": "cd ../customer-app && npm run build",
+    "build:web:dev": "cd ../customer-app && npm run dev",
     "cap:sync": "npx cap sync ios",
+    "cap:sync:debug": "cp capacitor.config.debug.ts capacitor.config.ts && npx cap sync ios",
+    "cap:sync:release": "cp capacitor.config.release.ts capacitor.config.ts && npx cap sync ios",
     "cap:copy": "npx cap copy ios",
     "ios:open": "npx cap open ios",
     "ios:run": "npx cap run ios",
+    "ios:debug": "npm run cap:sync:debug && npm run ios:open",
+    "ios:release": "npm run cap:sync:release && npm run ios:open",
     "prebuild": "npm run build:web",
     "build": "npm run cap:sync"
   },

@@ -1,5 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
+import { defineSecret } from 'firebase-functions/params';
 import Stripe from 'stripe';
 import { callableOptions } from './cors';
 
@@ -21,6 +22,13 @@ function getStripeMode(): StripeMode {
   if (isEmulator()) return 'test';
   return process.env.STRIPE_MODE === 'live' ? 'live' : 'test';
 }
+
+const stripeSecretKeyLive = defineSecret('STRIPE_SECRET_KEY_LIVE');
+const stripeSecretKeyTest = defineSecret('STRIPE_SECRET_KEY_TEST');
+
+const walletCallableOptions = isEmulator()
+  ? { ...callableOptions, invoker: 'public' }
+  : { ...callableOptions, invoker: 'public', secrets: [stripeSecretKeyLive, stripeSecretKeyTest] };
 
 async function assertLivePaymentsAllowed(uid: string) {
   if (getStripeMode() !== 'live') return;
@@ -46,23 +54,15 @@ function getStripe(): Stripe {
     const emulator = isEmulator();
     const mode = getStripeMode();
     
-    console.error('[getStripe] Initializing - isEmulator:', emulator);
-    console.error('[getStripe] ENV:', {
-      FUNCTIONS_EMULATOR: process.env.FUNCTIONS_EMULATOR,
-      HAS_TEST_KEY: !!process.env.STRIPE_SECRET_KEY_TEST,
-      HAS_KEY: !!process.env.STRIPE_SECRET_KEY,
-    });
-    
     // ✅ Emulator ALWAYS uses .env.local with TEST keys
     if (emulator) {
       const key = process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY;
       if (!key) {
-        console.error('[getStripe] ❌ NO KEY FOUND');
         throw new HttpsError('failed-precondition', 'Missing STRIPE_SECRET_KEY_TEST in functions/.env.local');
       }
       const keyType = key.startsWith('sk_test') ? 'TEST' : 'LIVE';
-      
-      console.error('[getStripe] ✅ Using key type:', keyType);
+
+      console.log(`[Stripe] mode=${mode} key=${keyType} emulator=${emulator}`);
       
       if (keyType !== 'TEST') {
         throw new HttpsError('failed-precondition', 'LIVE key detected in emulator! Use TEST keys only.');
@@ -71,27 +71,27 @@ function getStripe(): Stripe {
       stripe = new Stripe(key, {
         apiVersion: '2025-12-15.clover',
       });
-    } else {
-      // ✅ Production or deployed test mode: Read from environment variable
-      const key = process.env.STRIPE_SECRET_KEY;
-      if (!key) {
-        throw new HttpsError(
-          'failed-precondition',
-          'STRIPE_SECRET_KEY not configured'
-        );
-      }
-
-      if (mode === 'test' && !key.startsWith('sk_test')) {
-        throw new HttpsError('failed-precondition', 'STRIPE_MODE=test requires sk_test_* key');
-      }
-      if (mode === 'live' && !key.startsWith('sk_live')) {
-        throw new HttpsError('failed-precondition', 'STRIPE_MODE=live requires sk_live_* key');
-      }
-      
-      stripe = new Stripe(key, {
-        apiVersion: '2025-12-15.clover',
-      });
     }
+
+    // ✅ Deployed environments: use Secret Manager (test/live enforced by STRIPE_MODE)
+    const key = mode === 'live' ? stripeSecretKeyLive.value() : stripeSecretKeyTest.value();
+    if (!key) {
+      throw new HttpsError('failed-precondition', `Missing STRIPE_SECRET_KEY_${mode === 'live' ? 'LIVE' : 'TEST'} in Secret Manager`);
+    }
+
+    const keyType = key.startsWith('sk_live') ? 'LIVE' : key.startsWith('sk_test') ? 'TEST' : 'UNKNOWN';
+    console.log(`[Stripe] mode=${mode} key=${keyType} emulator=${emulator}`);
+
+    if (mode === 'test' && keyType !== 'TEST') {
+      throw new HttpsError('failed-precondition', 'STRIPE_MODE=test requires sk_test_* key');
+    }
+    if (mode === 'live' && keyType !== 'LIVE') {
+      throw new HttpsError('failed-precondition', 'STRIPE_MODE=live requires sk_live_* key');
+    }
+
+    stripe = new Stripe(key, {
+      apiVersion: '2025-12-15.clover',
+    });
   }
   return stripe;
 }
@@ -100,7 +100,7 @@ function getStripe(): Stripe {
  * createSetupIntent - Create a SetupIntent for adding a payment method
  */
 export const createSetupIntent = onCall(
-  { ...callableOptions, invoker: 'public' },
+  walletCallableOptions,
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -108,14 +108,6 @@ export const createSetupIntent = onCall(
     }
 
     await assertLivePaymentsAllowed(uid);
-
-    // DEBUG: Log environment detection
-    console.error('[createSetupIntent] ENV CHECK:', {
-      FUNCTIONS_EMULATOR: process.env.FUNCTIONS_EMULATOR,
-      FIREBASE_EMULATOR_HUB: process.env.FIREBASE_EMULATOR_HUB,
-      hasSTRIPE_SECRET_KEY_TEST: !!process.env.STRIPE_SECRET_KEY_TEST,
-      hasSTRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
-    });
 
     const stripe = getStripe();
     try {
@@ -206,7 +198,7 @@ export const createSetupIntent = onCall(
  * listPaymentMethods - List customer's saved payment methods
  */
 export const listPaymentMethods = onCall(
-  { ...callableOptions, invoker: 'public' },
+  walletCallableOptions,
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -276,7 +268,7 @@ export const listPaymentMethods = onCall(
  * setDefaultPaymentMethod - Set a payment method as default
  */
 export const setDefaultPaymentMethod = onCall<{ paymentMethodId: string }>(
-  { ...callableOptions, invoker: 'public' },
+  walletCallableOptions,
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -351,7 +343,7 @@ export const setDefaultPaymentMethod = onCall<{ paymentMethodId: string }>(
  * detachPaymentMethod - Remove a payment method
  */
 export const detachPaymentMethod = onCall<{ paymentMethodId: string }>(
-  { ...callableOptions, invoker: 'public' },
+  walletCallableOptions,
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {

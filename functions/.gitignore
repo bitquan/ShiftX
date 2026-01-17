@@ -8,3 +8,6 @@ typings/
 # Node.js dependency directory
 node_modules/
 *.local
+
+# Project-specific Functions deploy env (do not commit)
+.env.shiftx-95c4b

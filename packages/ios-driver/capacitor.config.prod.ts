@@ -17,9 +17,6 @@ const config: CapacitorConfig = {
   appName: 'ShiftX Driver',
   webDir: '../driver-app/dist',
   bundledWebRuntime: false,
-  server: {
-    url: 'https://shiftx-95c4b-driver.web.app',
-  },
 };
 
 export default config;

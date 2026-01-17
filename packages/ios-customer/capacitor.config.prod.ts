@@ -22,10 +22,6 @@ const config: CapacitorConfig = {
   appId: 'com.shiftx.customer',
   appName: 'ShiftX Customer',
   webDir: '../customer-app/dist',
-  server: {
-    url: 'https://shiftx-95c4b-customer.web.app',
-    cleartext: false,
-  },
   ios: {
     contentInset: 'automatic',
   }

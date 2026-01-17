@@ -21,7 +21,6 @@ const config: CapacitorConfig = {
     url: 'http://127.0.0.1:5174',
     cleartext: true,
   },
-  bundledWebRuntime: false,
 };
 
 export default config;

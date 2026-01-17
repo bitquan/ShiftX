@@ -19,10 +19,6 @@ const config: CapacitorConfig = {
   appName: 'ShiftX Customer (Dev)',
   webDir: '../customer-app/dist',
   server: {
-    url: 'http://localhost:5173',
-    cleartext: true,
-  },
-  server: {
     url: 'http://127.0.0.1:5173',
     cleartext: true,
   },

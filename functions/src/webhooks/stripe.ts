@@ -566,11 +566,7 @@ async function handleAccountUpdated(account: any) {
 async function handleCapabilityUpdated(
   capability: any,
   accountId: string | undefined,
-<<<<<<< HEAD
   livemode: boolean
-=======
-  _livemode?: boolean
->>>>>>> aa34f7d (Fix: gate LIVE Connect before Stripe init/secrets access)
 ) {
   if (!accountId) {
     console.log('[Webhook] No account ID for capability update');

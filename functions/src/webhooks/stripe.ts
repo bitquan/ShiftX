@@ -25,11 +25,6 @@ function getStripe(isLiveMode: boolean) {
   return new Stripe(stripeKey, { apiVersion: '2025-12-15.clover' });
 }
 
-/**
- * Stripe webhook handler
- * Handles webhooks from both Stripe live and test modes
- * Public endpoint with dual signature verification
- */
 export const stripeWebhook = onRequest(
   {
     secrets: [
@@ -49,7 +44,7 @@ export const stripeWebhook = onRequest(
     }
 
     const sig = req.headers['stripe-signature'];
-    
+
     if (!sig || typeof sig !== 'string') {
       console.error('[Webhook] Missing stripe-signature header');
       res.status(400).send('Webhook signature missing');
@@ -62,15 +57,15 @@ export const stripeWebhook = onRequest(
       res.status(400).send('Webhook body missing');
       return;
     }
-    
+
     let event: Stripe.Event;
     let isLiveMode = false;
-    
+
     // Try to verify signature with LIVE secret first, then TEST
     try {
       const liveSecret = STRIPE_WEBHOOK_SECRET_LIVE.value();
       const testSecret = STRIPE_WEBHOOK_SECRET_TEST.value();
-      
+
       // If secrets not configured yet, accept the webhook but log warning
       if (!liveSecret && !testSecret) {
         console.warn('[Webhook] ⚠️ No webhook secrets configured - accepting without verification (UNSAFE)');
@@ -79,7 +74,7 @@ export const stripeWebhook = onRequest(
       } else {
         const stripe = getStripe(true);
         const stripeTest = getStripe(false);
-        
+
         try {
           if (liveSecret && stripe) {
             event = stripe.webhooks.constructEvent(rawBody, sig, liveSecret);
@@ -111,13 +106,13 @@ export const stripeWebhook = onRequest(
         `[Webhook] ⚠️ Mode mismatch: verified as ${isLiveMode ? 'LIVE' : 'TEST'} but event.livemode=${event.livemode}`
       );
     }
-    
-    console.log(`[Webhook] 📨 Event: ${event.type} (${isLiveMode ? 'LIVE' : 'TEST'}) [${event.id}]`);
+
+    console.log(`[Webhook] 📨 Event: ${(event as any).type} (${isLiveMode ? 'LIVE' : 'TEST'}) [${event.id}]`);
 
     // Check if we've already processed this event (idempotent)
     const eventRef = db.collection('stripeEvents').doc(event.id);
     const existingEvent = await eventRef.get();
-    
+
     if (existingEvent.exists) {
       console.log(`[Webhook] ⏭️  Event ${event.id} already processed, skipping`);
       res.status(200).json({ received: true, status: 'already_processed' });
@@ -127,66 +122,68 @@ export const stripeWebhook = onRequest(
     // Store the event for audit trail
     await eventRef.set({
       eventId: event.id,
-      type: event.type,
+      type: (event as any).type,
       livemode: isLiveMode,
       created: event.created,
-      objectId: (event.data.object as any).id || null,
+      objectId: ((event as any).data?.object as any)?.id || null,
       processedAt: admin.firestore.FieldValue.serverTimestamp(),
       rawEvent: event,
     });
-    
+
     try {
-      // Handle the event
-      switch (event.type) {
+      const eventType = (event as any).type as string;
+      const eventData = (event as any).data;
+
+      switch (eventType) {
         case 'payment_intent.amount_capturable_updated':
-          await handlePaymentIntentAmountCapturableUpdated(event.data.object as any);
+          await handlePaymentIntentAmountCapturableUpdated(eventData.object as any);
           break;
-          
+
         case 'payment_intent.succeeded':
-          await handlePaymentIntentSucceeded(event.data.object as any);
+          await handlePaymentIntentSucceeded(eventData.object as any);
           break;
-          
+
         case 'payment_intent.payment_failed':
-          await handlePaymentIntentFailed(event.data.object as any);
+          await handlePaymentIntentFailed(eventData.object as any);
           break;
-          
+
         case 'payment_intent.canceled':
-          await handlePaymentIntentCanceled(event.data.object as any);
+          await handlePaymentIntentCanceled(eventData.object as any);
           break;
 
         case 'setup_intent.succeeded':
-          await handleSetupIntentSucceeded(event.data.object as any);
+          await handleSetupIntentSucceeded(eventData.object as any);
           break;
 
         case 'setup_intent.setup_failed':
-          await handleSetupIntentFailed(event.data.object as any);
+          await handleSetupIntentFailed(eventData.object as any);
           break;
-          
+
         case 'account.updated':
-          await handleAccountUpdated(event.data.object as any);
+          await handleAccountUpdated(eventData.object as any);
           break;
-          
+
         case 'capability.updated':
-          await handleCapabilityUpdated(event.data.object as any, event.account, event.livemode);
+          await handleCapabilityUpdated(eventData.object as any, (event as any).account, event.livemode);
           break;
 
         case 'transfer.created':
-          await handleTransferCreated(event.data.object as any);
+          await handleTransferCreated(eventData.object as any);
           break;
 
         case 'transfer.failed':
-          await handleTransferFailed(event.data.object as any);
+          await handleTransferFailed(eventData.object as any);
           break;
 
         case 'payout.failed':
-          await handlePayoutFailed(event.data.object as any, event.account, event.livemode);
+          await handlePayoutFailed(eventData.object as any, (event as any).account, event.livemode);
           break;
-          
+
         default:
-          console.log('[Webhook] Unhandled event type:', event.type);
+          console.log('[Webhook] Unhandled event type:', eventType);
       }
-      
-      console.log(`[Webhook] ✅ Successfully processed ${event.type}`);
+
+      console.log(`[Webhook] ✅ Successfully processed ${eventType}`);
       res.json({ received: true, status: 'processed' });
     } catch (error: any) {
       console.error('[Webhook] ❌ Error processing event:', error);
@@ -569,7 +566,11 @@ async function handleAccountUpdated(account: any) {
 async function handleCapabilityUpdated(
   capability: any,
   accountId: string | undefined,
+<<<<<<< HEAD
   livemode: boolean
+=======
+  _livemode?: boolean
+>>>>>>> aa34f7d (Fix: gate LIVE Connect before Stripe init/secrets access)
 ) {
   if (!accountId) {
     console.log('[Webhook] No account ID for capability update');

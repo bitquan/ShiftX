@@ -177,11 +177,10 @@ export const createConnectAccount = onCall(
       );
     }
 
-    const stripe = getStripe();
     const emulator = isEmulator();
     const mode = getStripeMode();
-
     await assertLiveConnectAllowed(uid);
+    const stripe = getStripe();
     
     // Determine mode-specific field names
     const accountIdField = mode === 'test' ? 'stripeConnectAccountId_test' : 'stripeConnectAccountId_live';
@@ -317,11 +316,10 @@ export const getConnectOnboardingLink = onCall(
       );
     }
 
-    const stripe = getStripe();
     const emulator = isEmulator();
     const mode = getStripeMode();
-
     await assertLiveConnectAllowed(uid);
+    const stripe = getStripe();
     
     // Determine mode-specific field names
     const accountIdField = mode === 'test' ? 'stripeConnectAccountId_test' : 'stripeConnectAccountId_live';
@@ -449,10 +447,9 @@ export const getConnectStatus = onCall(
       );
     }
 
-    const stripe = getStripe();
     const mode = getStripeMode();
-
     await assertLiveConnectAllowed(uid);
+    const stripe = getStripe();
     const accountIdField = mode === 'test' ? 'stripeConnectAccountId_test' : 'stripeConnectAccountId_live';
     const statusField = mode === 'test' ? 'stripeConnectStatus_test' : 'stripeConnectStatus_live';
 

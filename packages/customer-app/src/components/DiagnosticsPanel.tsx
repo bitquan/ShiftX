@@ -49,8 +49,8 @@ export function DiagnosticsPanel({ user }: DiagnosticsPanelProps) {
   return (
     <div style={{
       position: 'fixed',
-      bottom: '16px',
-      right: '16px',
+      bottom: 'calc(320px + env(safe-area-inset-bottom))',
+      right: 'calc(16px + env(safe-area-inset-right))',
       zIndex: 9999,
     }}>
       {/* Toggle Button */}

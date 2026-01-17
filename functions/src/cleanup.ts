@@ -22,6 +22,7 @@ export async function runCleanupJobs(
     cancelledUnpaid: 0,
     cancelledUnstarted: 0,
     cancelledStalePayments: 0,
+    missingTransfers: 0,
   };
 
   console.log('[Cleanup] Starting cleanup jobs at', new Date(now).toISOString());
@@ -48,8 +49,89 @@ export async function runCleanupJobs(
     await cancelStalePaymentIntents(now, paymentAuthTimeoutMs, stripe, firestoreDb, results);
   }
 
+  // 7. Detect captured payments with missing transfers (Connect)
+  if (stripe && stripeEnabled) {
+    await flagMissingTransfers(now, stripe, firestoreDb, results);
+  }
+
   console.log('[Cleanup] Completed:', results);
   return results;
+}
+
+/**
+ * Flag captured rides where a Connect transfer is missing
+ */
+async function flagMissingTransfers(
+  now: number,
+  stripe: any,
+  firestoreDb: FirebaseFirestore.Firestore,
+  results: { missingTransfers: number }
+) {
+  const snapshot = await firestoreDb
+    .collection('rides')
+    .where('paymentStatus', '==', 'captured')
+    .orderBy('updatedAtMs', 'desc')
+    .limit(50)
+    .get();
+
+  if (snapshot.empty) {
+    return;
+  }
+
+  for (const doc of snapshot.docs) {
+    const ride = doc.data();
+    const rideId = doc.id;
+
+    if (!ride?.transferDestination || ride?.connectTransferId) {
+      continue;
+    }
+
+    const ageMs = now - (ride.updatedAtMs || now);
+    if (ageMs < 2 * 60 * 1000) {
+      continue; // allow time for transfer creation
+    }
+
+    const paymentIntentId = ride?.stripePaymentIntentId || ride?.paymentIntentId;
+    if (!paymentIntentId) {
+      continue;
+    }
+
+    try {
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      const charge = paymentIntent.charges?.data?.[0];
+      const transferId = charge?.transfer || null;
+
+      if (transferId) {
+        await doc.ref.update({
+          connectTransferId: transferId,
+          connectTransferStatus: 'created',
+          paymentAuditTransferMissing: false,
+          updatedAtMs: Date.now(),
+        });
+      } else {
+        await doc.ref.update({
+          paymentAuditTransferMissing: true,
+          paymentAuditAtMs: Date.now(),
+          updatedAtMs: Date.now(),
+        });
+
+        await firestoreDb.collection('adminLogs').add({
+          action: 'payment_captured_missing_transfer',
+          details: {
+            rideId,
+            paymentIntentId,
+            transferDestination: ride.transferDestination,
+          },
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          timestampMs: Date.now(),
+        });
+
+        results.missingTransfers++;
+      }
+    } catch (error) {
+      console.error('[Cleanup] Error checking transfer for ride', rideId, error);
+    }
+  }
 }
 
 /**
@@ -664,14 +746,26 @@ export async function cancelStalePaymentIntents(
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret } from 'firebase-functions/params';
 
-const stripeSecret = defineSecret('STRIPE_SECRET_KEY');
+function isEmulator() {
+  return process.env.FUNCTIONS_EMULATOR === 'true' || !!process.env.FIREBASE_EMULATOR_HUB;
+}
+
+type StripeMode = 'test' | 'live';
+
+function getStripeMode(): StripeMode {
+  if (isEmulator()) return 'test';
+  return process.env.STRIPE_MODE === 'live' ? 'live' : 'test';
+}
+
+const stripeSecretLive = defineSecret('STRIPE_SECRET_KEY_LIVE');
+const stripeSecretTest = defineSecret('STRIPE_SECRET_KEY_TEST');
 
 export const scheduledCleanup = onSchedule(
   {
     schedule: 'every 2 minutes',
     timeoutSeconds: 540,
     memory: '256MiB',
-    secrets: [stripeSecret],
+    secrets: [stripeSecretLive, stripeSecretTest],
   },
   async (event) => {
     console.log('[scheduledCleanup] Starting cleanup jobs...');
@@ -680,14 +774,34 @@ export const scheduledCleanup = onSchedule(
     let stripe = null;
     let stripeEnabled = false;
     try {
-      const stripeKey = stripeSecret.value();
-      if (stripeKey) {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const Stripe = require('stripe');
-        stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' });
-        stripeEnabled = true;
-        console.log('[scheduledCleanup] Stripe initialized');
+      const mode = getStripeMode();
+      const emulator = isEmulator();
+      let stripeKey: string | undefined;
+
+      if (emulator) {
+        stripeKey = process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY;
+      } else if (mode === 'test') {
+        stripeKey = stripeSecretTest.value();
+      } else {
+        stripeKey = stripeSecretLive.value();
       }
+
+      if (!stripeKey) {
+        throw new Error('Stripe key missing for cleanup job');
+      }
+
+      if (mode === 'test' && !stripeKey.startsWith('sk_test')) {
+        throw new Error('STRIPE_MODE=test requires sk_test_* key');
+      }
+      if (mode === 'live' && !stripeKey.startsWith('sk_live')) {
+        throw new Error('STRIPE_MODE=live requires sk_live_* key');
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const Stripe = require('stripe');
+      stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' });
+      stripeEnabled = true;
+      console.log('[scheduledCleanup] Stripe initialized', { mode });
     } catch (error) {
       console.warn('[scheduledCleanup] Stripe not available:', error);
     }

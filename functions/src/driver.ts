@@ -9,6 +9,18 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
+// Helper to detect if running in emulator
+function isEmulator() {
+  return process.env.FUNCTIONS_EMULATOR === 'true' || !!process.env.FIREBASE_EMULATOR_HUB;
+}
+
+type StripeMode = 'test' | 'live';
+
+function getStripeMode(): StripeMode {
+  if (isEmulator()) return 'test';
+  return process.env.STRIPE_MODE === 'test' ? 'test' : 'live';
+}
+
 // Helper function to check if user is admin
 async function isAdmin(uid: string): Promise<boolean> {
   try {
@@ -357,6 +369,9 @@ export const listDrivers = onCall<Record<string, never>>(
     });
 
     const drivers: any[] = [];
+    const stripeMode = getStripeMode();
+    const accountIdField = stripeMode === 'test' ? 'stripeConnectAccountId_test' : 'stripeConnectAccountId_live';
+    const statusField = stripeMode === 'test' ? 'stripeConnectStatus_test' : 'stripeConnectStatus_live';
     driversSnapshot.forEach((doc) => {
       const driverData = doc.data();
       const userData = usersMap.get(doc.id);
@@ -369,9 +384,11 @@ export const listDrivers = onCall<Record<string, never>>(
         isOnline: driverData?.isOnline || false,
         vehicleClass: driverData?.vehicleClass || null,
         vehicleInfo: driverData?.vehicleInfo || null,
-        stripeConnectAccountId: driverData?.stripeConnectAccountId || null,
-        stripeConnectStatus: driverData?.stripeConnectStatus || 'none',
+        stripeConnectAccountId: driverData?.[accountIdField] || null,
+        stripeConnectStatus: driverData?.[statusField] || 'none',
+        connectEnabledOverride: driverData?.connectEnabledOverride || false,
         createdAtMs: driverData?.createdAtMs || 0,
+        stripeConnectMode: stripeMode,
       });
     });
 
@@ -420,5 +437,91 @@ export const setPreferredDriver = onCall<{ driverId: string }>(
     });
 
     return { ok: true, driverId };
+  }
+);
+
+/**
+ * toggleConnectPilot - Admin function to enable/disable Stripe Connect for a specific driver
+ */
+export const toggleConnectPilot = onCall<{ driverId: string; enabled: boolean }>(
+  callableOptions,
+  async (request) => {
+    const adminUid = request.auth?.uid;
+    if (!adminUid) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    // Check if caller is admin
+    const userIsAdmin = await isAdmin(adminUid);
+    if (!userIsAdmin) {
+      throw new HttpsError('permission-denied', 'Only admins can toggle pilot status');
+    }
+
+    const { driverId, enabled } = request.data;
+    if (!driverId || typeof driverId !== 'string') {
+      throw new HttpsError('invalid-argument', 'driverId is required');
+    }
+    if (typeof enabled !== 'boolean') {
+      throw new HttpsError('invalid-argument', 'enabled must be a boolean');
+    }
+
+    // Check if driver exists
+    const driverRef = db.collection('drivers').doc(driverId);
+    const driverSnap = await driverRef.get();
+
+    if (!driverSnap.exists) {
+      throw new HttpsError('not-found', 'Driver not found');
+    }
+
+    const driverData = driverSnap.data();
+    const stripeMode = getStripeMode();
+    const accountIdField = stripeMode === 'test' ? 'stripeConnectAccountId_test' : 'stripeConnectAccountId_live';
+    const statusField = stripeMode === 'test' ? 'stripeConnectStatus_test' : 'stripeConnectStatus_live';
+
+    // Verify driver has Connect account and is active before enabling
+    if (enabled) {
+      if (!driverData?.[accountIdField]) {
+        throw new HttpsError(
+          'failed-precondition',
+          'Driver must have a Stripe Connect account before enabling pilot'
+        );
+      }
+      if (driverData?.[statusField] !== 'active') {
+        throw new HttpsError(
+          'failed-precondition',
+          `Driver Connect status is "${driverData?.[statusField]}", must be "active" before enabling pilot`
+        );
+      }
+    }
+
+    // Update driver's pilot status
+    await driverRef.update({
+      connectEnabledOverride: enabled,
+      updatedAtMs: Date.now(),
+    });
+
+    // Get admin details for logging
+    const adminDoc = await db.collection('users').doc(adminUid).get();
+    const adminEmail = adminDoc.data()?.email || 'unknown';
+
+    // Log the action
+    await db.collection('adminLogs').add({
+      adminUid,
+      adminEmail,
+      action: enabled ? 'enable_connect_pilot' : 'disable_connect_pilot',
+      details: {
+        driverId,
+        driverEmail: driverData?.email || 'unknown',
+        enabled,
+        stripeConnectAccountId: driverData?.[accountIdField] || null,
+        stripeConnectMode: stripeMode,
+      },
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      timestampMs: Date.now(),
+    });
+
+    console.log(`[toggleConnectPilot] ${enabled ? 'Enabled' : 'Disabled'} Connect pilot for driver ${driverId}`);
+
+    return { ok: true, enabled };
   }
 );

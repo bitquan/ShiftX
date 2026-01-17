@@ -5,22 +5,98 @@ import { logRideEvent } from './eventLog';
 import { callableOptions as baseCorsOptions } from './cors';
 
 const db = admin.firestore();
-const stripeSecret = defineSecret('STRIPE_SECRET_KEY');
 
-const callableOptions = {
-  ...baseCorsOptions,
-  secrets: [stripeSecret],
-};
+// Helper to detect if running in emulator
+function isEmulator() {
+  return process.env.FUNCTIONS_EMULATOR === 'true' || !!process.env.FIREBASE_EMULATOR_HUB;
+}
 
-// Get Stripe from environment
+type StripeMode = 'test' | 'live';
+
+function getStripeMode(): StripeMode {
+  if (isEmulator()) return 'test';
+  return process.env.STRIPE_MODE === 'live' ? 'live' : 'test';
+}
+
+// Define secrets (emulator uses .env.local)
+const stripeSecretLive = defineSecret('STRIPE_SECRET_KEY_LIVE');
+const stripeSecretTest = defineSecret('STRIPE_SECRET_KEY_TEST');
+
+const callableOptions = isEmulator()
+  ? baseCorsOptions
+  : {
+      ...baseCorsOptions,
+      secrets: [stripeSecretLive, stripeSecretTest],
+    };
+
+// Get Stripe from environment - MODE AWARE
 function getStripe() {
-  const stripeKey = stripeSecret.value();
-  if (!stripeKey) {
-    throw new HttpsError('failed-precondition', 'Stripe not configured');
+  const emulator = isEmulator();
+  const mode = getStripeMode();
+
+  if (emulator) {
+    // Emulator: use TEST key from .env.local
+    const key = process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new HttpsError('failed-precondition', 'Missing STRIPE_SECRET_KEY_TEST in functions/.env.local');
+    }
+    if (!key.startsWith('sk_test')) {
+      throw new HttpsError('failed-precondition', 'EMULATOR requires TEST key (sk_test_*)');
+    }
+    console.log('[Rides] Using TEST Stripe key in emulator');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Stripe = require('stripe');
+    return new Stripe(key, { apiVersion: '2023-10-16' });
   }
+
+  if (mode === 'test') {
+    const key = stripeSecretTest.value();
+    if (!key) {
+      throw new HttpsError('failed-precondition', 'Missing STRIPE_SECRET_KEY_TEST in Secret Manager');
+    }
+    if (!key.startsWith('sk_test')) {
+      throw new HttpsError('failed-precondition', 'STRIPE_SECRET_KEY_TEST must be a test key (sk_test_*)');
+    }
+    console.log('[Rides] Using TEST Stripe key (STRIPE_MODE=test)');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Stripe = require('stripe');
+    return new Stripe(key, { apiVersion: '2023-10-16' });
+  }
+
+  // Production: use LIVE key from Secret Manager
+  const key = stripeSecretLive.value();
+  if (!key) {
+    throw new HttpsError('failed-precondition', 'Missing STRIPE_SECRET_KEY_LIVE in Secret Manager');
+  }
+  if (!key.startsWith('sk_live')) {
+    throw new HttpsError('failed-precondition', 'PRODUCTION requires LIVE key (sk_live_*)');
+  }
+  console.log('[Rides] Using LIVE Stripe key in production');
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Stripe = require('stripe');
-  return new Stripe(stripeKey, { apiVersion: '2023-10-16' });
+  return new Stripe(key, { apiVersion: '2023-10-16' });
+}
+
+async function assertLivePaymentsAllowed(uid: string, ride: any | null) {
+  if (getStripeMode() !== 'live') return;
+
+  const flagsSnap = await db.collection('config').doc('runtimeFlags').get();
+  const flags = flagsSnap.data() || {};
+
+  const allowLivePayments = flags.allowLivePayments === true;
+  const pilotUids: string[] = Array.isArray(flags.livePaymentPilotUids) ? flags.livePaymentPilotUids : [];
+
+  const driverId = ride?.driverId || null;
+  const customerId = ride?.customerId || null;
+
+  const isPilot = pilotUids.includes(uid) || (driverId && pilotUids.includes(driverId)) || (customerId && pilotUids.includes(customerId));
+
+  if (!allowLivePayments || !isPilot) {
+    throw new HttpsError(
+      'failed-precondition',
+      'LIVE payments are disabled. Enable allowLivePayments and whitelist pilot UIDs.'
+    );
+  }
 }
 
 interface TripRequestPayload {
@@ -773,6 +849,7 @@ export const completeRide = onCall<{ rideId: string }>(
         }
 
         paymentIntentId = ride?.stripePaymentIntentId || ride?.paymentIntentId;
+        await assertLivePaymentsAllowed(uid, ride);
 
         const now = Date.now();
 
@@ -830,6 +907,51 @@ export const completeRide = onCall<{ rideId: string }>(
             'payment.capturedAt': Date.now(),
             updatedAtMs: Date.now(),
           });
+
+          // Fallback: if Connect routing wasn't attached at PI creation, create a transfer now
+          try {
+            const rideAfterSnap = await rideRef.get();
+            const rideAfter = rideAfterSnap.data();
+            const connectDestination = rideAfter?.transferDestination || rideAfter?.stripeConnectAccountId;
+            const driverPayoutCents = rideAfter?.driverPayoutCents;
+
+            const hasDestinationCharge = !!captureResult.transfer_data?.destination;
+            const alreadyTransferred = !!rideAfter?.connectTransferId;
+
+            if (connectDestination && driverPayoutCents && !hasDestinationCharge && !alreadyTransferred) {
+              const chargeId = captureResult.charges?.data?.[0]?.id;
+              if (chargeId) {
+                const transfer = await stripe.transfers.create({
+                  amount: driverPayoutCents,
+                  currency: 'usd',
+                  destination: connectDestination,
+                  source_transaction: chargeId,
+                  transfer_group: `ride_${rideId}`,
+                  metadata: {
+                    rideId,
+                    driverId: uid,
+                  },
+                });
+
+                await rideRef.update({
+                  connectTransferId: transfer.id,
+                  connectTransferCreatedAtMs: Date.now(),
+                  updatedAtMs: Date.now(),
+                });
+
+                console.log('[completeRide] Created transfer for Connect payout:', {
+                  rideId,
+                  transferId: transfer.id,
+                  destination: connectDestination,
+                  amount: driverPayoutCents,
+                });
+              } else {
+                console.warn('[completeRide] No charge ID found; skipping transfer creation', { rideId });
+              }
+            }
+          } catch (transferError: any) {
+            console.error('[completeRide] Transfer creation failed:', transferError);
+          }
         } catch (error: any) {
           console.error('[completeRide] Payment capture failed:', error);
           // Don't fail the entire completion if capture fails
@@ -992,6 +1114,180 @@ export const cancelRide = onCall<{ rideId: string; reason?: string }>(
     } catch (error: any) {
       if (error.code) throw error;
       throw new HttpsError('internal', error.message || 'Transaction failed');
+    }
+  }
+);
+
+/**
+ * cancelActiveRide - Cancel a ride that is already in progress
+ * Handles cancellation during 'started' or 'in_progress' status
+ * Triggers refund if payment was captured
+ */
+export const cancelActiveRide = onCall<{ rideId: string; reason: string }>(
+  callableOptions,
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { rideId, reason } = request.data;
+    if (!rideId || !reason) {
+      throw new HttpsError('invalid-argument', 'rideId and reason required');
+    }
+
+    const rideRef = db.collection('rides').doc(rideId);
+
+    try {
+      let paymentIntentId: string | null = null;
+      let currentPaymentStatus: string | null = null;
+      let amountCaptured: number | null = null;
+
+      await db.runTransaction(async (transaction) => {
+        const rideSnap = await transaction.get(rideRef);
+
+        if (!rideSnap.exists) {
+          throw new HttpsError('not-found', 'Ride not found');
+        }
+
+        const ride = rideSnap.data();
+
+        // GUARD: Check if ride can be cancelled
+        if (ride?.status === 'completed') {
+          throw new HttpsError('failed-precondition', 'Cannot cancel a completed ride');
+        }
+        if (ride?.status === 'cancelled') {
+          throw new HttpsError('failed-precondition', 'Ride is already cancelled');
+        }
+
+        // GUARD: Check permissions
+        const isCustomer = ride?.customerId === uid;
+        const isDriver = ride?.driverId === uid;
+
+        if (!isCustomer && !isDriver) {
+          throw new HttpsError('permission-denied', 'Not authorized to cancel this ride');
+        }
+
+        // GUARD: Only allow cancellation of started/in_progress rides
+        if (ride?.status !== 'started' && ride?.status !== 'in_progress') {
+          throw new HttpsError(
+            'failed-precondition',
+            'This function is only for canceling active rides. Use cancelRide for other statuses.'
+          );
+        }
+
+        paymentIntentId = ride?.stripePaymentIntentId || ride?.paymentIntentId;
+        currentPaymentStatus = ride?.paymentStatus;
+        amountCaptured = ride?.totalChargeCents || null;
+
+        const now = Date.now();
+
+        // Update ride
+        transaction.update(rideRef, {
+          status: 'cancelled',
+          cancelReason: reason,
+          cancelledBy: uid,
+          cancelledAtMs: now,
+          paymentStatus: currentPaymentStatus === 'captured' ? 'refunding' : 'cancelled',
+          updatedAtMs: now,
+        });
+
+        // Release driver
+        if (ride?.driverId) {
+          const driverRef = db.collection('drivers').doc(ride.driverId);
+          transaction.update(driverRef, {
+            isBusy: false,
+            currentRideId: null,
+            currentRideStatus: null,
+            updatedAtMs: now,
+          });
+        }
+      });
+
+      // Handle payment refund if payment was captured
+      if (paymentIntentId && currentPaymentStatus === 'captured' && amountCaptured) {
+        try {
+          const stripe = getStripe();
+          
+          // Create refund
+          const refund = await stripe.refunds.create({
+            payment_intent: paymentIntentId,
+            reason: 'requested_by_customer',
+          });
+          
+          console.log('[cancelActiveRide] Refund created:', {
+            refundId: refund.id,
+            paymentIntentId,
+            amount: refund.amount,
+            status: refund.status,
+          });
+          
+          // Update ride with refund info
+          await rideRef.update({
+            paymentStatus: 'refunded',
+            refundId: refund.id,
+            refundedAtMs: Date.now(),
+            refundAmountCents: refund.amount,
+          });
+          
+          // Log refund event
+          await logRideEvent(rideId, 'payment_refunded', {
+            refundId: refund.id,
+            amount: refund.amount,
+            reason,
+            cancelledBy: uid,
+          });
+        } catch (error: any) {
+          console.error('[cancelActiveRide] Refund failed:', {
+            error: error.message,
+            paymentIntentId,
+            rideId,
+          });
+          
+          // Update status to indicate refund is pending/failed
+          await rideRef.update({
+            paymentStatus: 'refund_failed',
+            refundError: error.message,
+          });
+          
+          throw new HttpsError('internal', `Ride cancelled but refund failed: ${error.message}`);
+        }
+      } else if (paymentIntentId && currentPaymentStatus !== 'captured') {
+        // Payment not captured yet, just cancel it
+        try {
+          const stripe = getStripe();
+          await stripe.paymentIntents.cancel(paymentIntentId, {
+            cancellation_reason: 'requested_by_customer',
+          });
+          
+          await logRideEvent(rideId, 'payment_cancelled', {
+            reason,
+            cancelledBy: uid,
+            paymentIntentId,
+          });
+        } catch (error: any) {
+          console.error('[cancelActiveRide] Payment cancellation failed:', {
+            error: error.message,
+            paymentIntentId,
+          });
+          // Don't fail the cancellation
+        }
+      }
+
+      // Log ride cancellation event
+      await logRideEvent(rideId, 'ride_cancelled', {
+        reason,
+        cancelledBy: uid,
+        wasActive: true,
+      });
+
+      return { 
+        ok: true,
+        refunded: currentPaymentStatus === 'captured',
+      };
+    } catch (error: any) {
+      if (error.code) throw error;
+      throw new HttpsError('internal', error.message || 'Cancellation failed');
     }
   }
 );

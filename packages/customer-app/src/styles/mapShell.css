@@ -1,0 +1,71 @@
+/* MapShell - Full-screen map with floating UI */
+
+.map-shell {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  width: 100vw;
+  background: #000;
+  overflow: hidden;
+}
+
+/* Map layer - fills entire screen, behind everything */
+.map-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #000;
+  pointer-events: auto;
+}
+
+.map-layer > * {
+  width: 100%;
+  height: 100%;
+}
+
+/* IMPORTANT: Leaflet needs explicit height */
+.map-layer .leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: #000;
+}
+
+/* UI overlay - floats above map, no pointer events by default */
+.ui-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top bar - optional header */
+.ui-top {
+  pointer-events: auto;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  padding-top: calc(env(safe-area-inset-top) + 4px);
+}
+
+/* Top right corner - badges, diagnostics */
+.ui-top-right {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 4px);
+  right: calc(env(safe-area-inset-right) + 8px);
+  pointer-events: auto;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+/* Bottom right corner - diagnostics button */
+.ui-bottom-right {
+  position: absolute;
+  bottom: calc(25vh + env(safe-area-inset-bottom) + 20px);
+  right: calc(env(safe-area-inset-right) + 12px);
+  pointer-events: auto;
+  z-index: 150;
+}
+

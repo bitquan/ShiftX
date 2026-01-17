@@ -19,7 +19,7 @@ import { RebookPayload } from './types/rebook';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
 import { watchRuntimeFlags, RuntimeFlags } from './utils/runtimeFlags';
 import { logStripeMode } from './utils/stripeMode';
-import { EnvironmentBadge } from './components/EnvironmentBadge';
+import { FloatingBackButton } from './components/FloatingBackButton';
 import './styles.css';
 
 type AppState = 'request-ride' | 'ride-status' | 'ride-history' | 'wallet' | 'invite';
@@ -220,7 +220,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <EnvironmentBadge />
+        <div className="safe-area-shell">
         {runtimeFlags?.maintenanceMessage && (
           <MaintenanceBanner message={runtimeFlags.maintenanceMessage} type="warning" />
         )}
@@ -232,64 +232,19 @@ export default function App() {
         {user && onboardingStatus === 'active' && (
           <>
             {appState === 'request-ride' && (
-              <>
-                <RequestRide 
-                  onRideRequested={handleRideRequested}
-                  rebookPayload={rebookPayload}
-                  onRebookConsumed={() => setRebookPayload(null)}
-                  userPhotoURL={userPhotoURL}
-                  runtimeFlags={runtimeFlags}
-                />
-                <div style={{ marginTop: '1rem', textAlign: 'center', display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-                  <button
-                    onClick={handleViewHistory}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      color: 'white',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                    }}
-                  >
-                    📋 Ride History
-                  </button>
-                  <button
-                    onClick={() => setAppState('wallet')}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      color: 'white',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                    }}
-                  >
-                    💳 Wallet
-                  </button>
-                </div>
-              </>
+              <RequestRide 
+                onRideRequested={handleRideRequested}
+                rebookPayload={rebookPayload}
+                onRebookConsumed={() => setRebookPayload(null)}
+                userPhotoURL={userPhotoURL}
+                runtimeFlags={runtimeFlags}
+                onViewHistory={handleViewHistory}
+                onViewWallet={() => setAppState('wallet')}
+              />
             )}
             {appState === 'ride-history' && (
               <>
-                <div style={{ marginBottom: '1rem' }}>
-                  <button
-                    onClick={handleBackToRequest}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      color: 'white',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                    }}
-                  >
-                    ← Back to Request
-                  </button>
-                </div>
+                <FloatingBackButton onClick={handleBackToRequest} />
                 <RideHistory 
                   onSelectRide={handleSelectHistoricalRide} 
                   onRequestAgain={handleRequestAgain}
@@ -298,43 +253,13 @@ export default function App() {
             )}
             {appState === 'wallet' && (
               <>
-                <div style={{ marginBottom: '1rem' }}>
-                  <button
-                    onClick={handleBackToRequest}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      color: 'white',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                    }}
-                  >
-                    ← Back to Request
-                  </button>
-                </div>
+                <FloatingBackButton onClick={handleBackToRequest} />
                 <CustomerWallet />
               </>
             )}
             {appState === 'ride-status' && rideId && (
               <>
-                <div style={{ marginBottom: '1rem' }}>
-                  <button
-                    onClick={handleBackToRequest}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      color: 'white',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                    }}
-                  >
-                    ← Back to Request
-                  </button>
-                </div>
+                <FloatingBackButton onClick={handleBackToRequest} />
                 <RideStatus
                   rideId={rideId}
                   onRideCompleted={handleRideCompleted}
@@ -345,13 +270,15 @@ export default function App() {
             )}
           </>
         )}
-
-        {/* Profile Modal */}
-        {showProfile && <Profile onClose={() => setShowProfile(false)} />}
       </AuthGate>
+      
+      {/* Profile Modal - rendered outside AuthGate to avoid z-index conflicts */}
+      {showProfile && <Profile onClose={() => setShowProfile(false)} />}
+      
       <ProdDiagnostics />
       <DebugPanel />
       <DiagnosticsPanel user={user} />
+      </div>
     </ToastProvider>
     </ErrorBoundary>
   );

@@ -14,8 +14,8 @@ export function StripeModeIndicator() {
     <div
       style={{
         position: 'fixed',
-        top: 10,
-        right: 10,
+        top: 'calc(10px + var(--sat))',
+        right: 'calc(10px + var(--sar))',
         padding: '4px 12px',
         backgroundColor: color,
         color: 'white',

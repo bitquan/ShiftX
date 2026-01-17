@@ -1,11 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
 import Stripe from 'stripe';
 import { callableOptions } from './cors';
-
-// Define the Stripe secret key
-const stripeSecretKey = defineSecret('STRIPE_SECRET_KEY');
 
 // Initialize admin if not already done
 if (!admin.apps.length) {
@@ -14,21 +10,88 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
+// Helper to detect if running in emulator
+function isEmulator() {
+  return process.env.FUNCTIONS_EMULATOR === 'true' || !!process.env.FIREBASE_EMULATOR_HUB;
+}
+
+type StripeMode = 'test' | 'live';
+
+function getStripeMode(): StripeMode {
+  if (isEmulator()) return 'test';
+  return process.env.STRIPE_MODE === 'live' ? 'live' : 'test';
+}
+
+async function assertLivePaymentsAllowed(uid: string) {
+  if (getStripeMode() !== 'live') return;
+
+  const flagsSnap = await db.collection('config').doc('runtimeFlags').get();
+  const flags = flagsSnap.data() || {};
+
+  const allowLivePayments = flags.allowLivePayments === true;
+  const pilotUids: string[] = Array.isArray(flags.livePaymentPilotUids) ? flags.livePaymentPilotUids : [];
+
+  if (!allowLivePayments || !pilotUids.includes(uid)) {
+    throw new HttpsError(
+      'failed-precondition',
+      'LIVE payments are disabled. Enable allowLivePayments and whitelist pilot UIDs.'
+    );
+  }
+}
+
 // Initialize Stripe lazily
 let stripe: Stripe | null = null;
 function getStripe(): Stripe {
   if (!stripe) {
-    const key = stripeSecretKey.value();
-    if (!key) {
-      console.warn('STRIPE_SECRET_KEY is not set - wallet functions will not work');
-      throw new HttpsError(
-        'failed-precondition',
-        'Payment system not configured. Please contact support.'
-      );
-    }
-    stripe = new Stripe(key, {
-      apiVersion: '2025-12-15.clover',
+    const emulator = isEmulator();
+    const mode = getStripeMode();
+    
+    console.error('[getStripe] Initializing - isEmulator:', emulator);
+    console.error('[getStripe] ENV:', {
+      FUNCTIONS_EMULATOR: process.env.FUNCTIONS_EMULATOR,
+      HAS_TEST_KEY: !!process.env.STRIPE_SECRET_KEY_TEST,
+      HAS_KEY: !!process.env.STRIPE_SECRET_KEY,
     });
+    
+    // ✅ Emulator ALWAYS uses .env.local with TEST keys
+    if (emulator) {
+      const key = process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY;
+      if (!key) {
+        console.error('[getStripe] ❌ NO KEY FOUND');
+        throw new HttpsError('failed-precondition', 'Missing STRIPE_SECRET_KEY_TEST in functions/.env.local');
+      }
+      const keyType = key.startsWith('sk_test') ? 'TEST' : 'LIVE';
+      
+      console.error('[getStripe] ✅ Using key type:', keyType);
+      
+      if (keyType !== 'TEST') {
+        throw new HttpsError('failed-precondition', 'LIVE key detected in emulator! Use TEST keys only.');
+      }
+      
+      stripe = new Stripe(key, {
+        apiVersion: '2025-12-15.clover',
+      });
+    } else {
+      // ✅ Production or deployed test mode: Read from environment variable
+      const key = process.env.STRIPE_SECRET_KEY;
+      if (!key) {
+        throw new HttpsError(
+          'failed-precondition',
+          'STRIPE_SECRET_KEY not configured'
+        );
+      }
+
+      if (mode === 'test' && !key.startsWith('sk_test')) {
+        throw new HttpsError('failed-precondition', 'STRIPE_MODE=test requires sk_test_* key');
+      }
+      if (mode === 'live' && !key.startsWith('sk_live')) {
+        throw new HttpsError('failed-precondition', 'STRIPE_MODE=live requires sk_live_* key');
+      }
+      
+      stripe = new Stripe(key, {
+        apiVersion: '2025-12-15.clover',
+      });
+    }
   }
   return stripe;
 }
@@ -37,12 +100,22 @@ function getStripe(): Stripe {
  * createSetupIntent - Create a SetupIntent for adding a payment method
  */
 export const createSetupIntent = onCall(
-  { ...callableOptions, invoker: 'public', secrets: [stripeSecretKey] },
+  { ...callableOptions, invoker: 'public' },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
       throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
+
+    await assertLivePaymentsAllowed(uid);
+
+    // DEBUG: Log environment detection
+    console.error('[createSetupIntent] ENV CHECK:', {
+      FUNCTIONS_EMULATOR: process.env.FUNCTIONS_EMULATOR,
+      FIREBASE_EMULATOR_HUB: process.env.FIREBASE_EMULATOR_HUB,
+      hasSTRIPE_SECRET_KEY_TEST: !!process.env.STRIPE_SECRET_KEY_TEST,
+      hasSTRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
+    });
 
     const stripe = getStripe();
     try {
@@ -133,14 +206,17 @@ export const createSetupIntent = onCall(
  * listPaymentMethods - List customer's saved payment methods
  */
 export const listPaymentMethods = onCall(
-  { ...callableOptions, invoker: 'public', secrets: [stripeSecretKey] },
+  { ...callableOptions, invoker: 'public' },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
       throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
+    await assertLivePaymentsAllowed(uid);
+
     const stripe = getStripe();
+    console.log('[listPaymentMethods] Called by user:', uid);
     try {
       // Get Stripe customer ID
       const customerSnap = await db.collection('customers').doc(uid).get();
@@ -200,12 +276,14 @@ export const listPaymentMethods = onCall(
  * setDefaultPaymentMethod - Set a payment method as default
  */
 export const setDefaultPaymentMethod = onCall<{ paymentMethodId: string }>(
-  { ...callableOptions, invoker: 'public', secrets: [stripeSecretKey] },
+  { ...callableOptions, invoker: 'public' },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
       throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
+
+    await assertLivePaymentsAllowed(uid);
 
     const { paymentMethodId } = request.data;
     if (!paymentMethodId) {
@@ -273,12 +351,14 @@ export const setDefaultPaymentMethod = onCall<{ paymentMethodId: string }>(
  * detachPaymentMethod - Remove a payment method
  */
 export const detachPaymentMethod = onCall<{ paymentMethodId: string }>(
-  { ...callableOptions, invoker: 'public', secrets: [stripeSecretKey] },
+  { ...callableOptions, invoker: 'public' },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
       throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
+
+    await assertLivePaymentsAllowed(uid);
 
     const { paymentMethodId } = request.data;
     if (!paymentMethodId) {

@@ -10,6 +10,7 @@
     "format": "prettier --write src/**/*.ts*"
   },
   "dependencies": {
+    "@capacitor/browser": "^8.0.0",
     "@dataconnect/admin-generated": "file:src/dataconnect-admin-generated",
     "@dataconnect/generated": "file:src/dataconnect-generated",
     "@shiftx/driver-client": "file:../driver-client",

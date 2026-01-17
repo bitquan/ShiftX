@@ -1,4 +1,5 @@
 import { FirebaseApp, FirebaseOptions } from 'firebase/app';
+import { Auth } from 'firebase/auth';
 import { Functions } from 'firebase/functions';
 import { Firestore, Unsubscribe } from 'firebase/firestore';
 import { FirebaseStorage } from 'firebase/storage';
@@ -6,6 +7,8 @@ import { DriverProfile, RideOffer, TripCancelPayload, TripRequestData, TripReque
 export interface DriverClientConfig {
     firebaseConfig: FirebaseOptions;
     emulator?: {
+        authHost: string;
+        authPort: number;
         firestoreHost: string;
         firestorePort: number;
         functionsHost: string;
@@ -16,6 +19,7 @@ export interface DriverClientConfig {
 }
 export interface InitializedDriverClient {
     app: FirebaseApp;
+    auth: Auth;
     functions: Functions;
     firestore: Firestore;
     storage: FirebaseStorage;
@@ -58,6 +62,8 @@ export declare function watchRide(rideId: string, onChange: (ride: any | null) =
 export declare function watchDriverOffers(driverId: string, onOffers: DriverOfferObserver, onError?: (error: Error) => void): Unsubscribe;
 export declare function getInitializedClient(): InitializedDriverClient;
 export declare const DEFAULT_EMULATOR_CONFIG: {
+    authHost: string;
+    authPort: number;
     firestoreHost: string;
     firestorePort: number;
     functionsHost: string;

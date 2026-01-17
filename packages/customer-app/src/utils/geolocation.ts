@@ -6,6 +6,19 @@ function getCurrentPositionP(options: PositionOptions): Promise<GeolocationPosit
   });
 }
 
+// Add extra timeout wrapper to handle iOS WebKit hanging
+function getCurrentPositionWithTimeout(
+  options: PositionOptions,
+  extraTimeout: number
+): Promise<GeolocationPosition> {
+  return Promise.race([
+    getCurrentPositionP(options),
+    new Promise<GeolocationPosition>((_, reject) =>
+      setTimeout(() => reject(new Error('Location timeout')), extraTimeout)
+    ),
+  ]);
+}
+
 export async function getBestEffortPosition(): Promise<{
   coords?: LatLng;
   source: "gps_low" | "gps_high" | "cache" | "none";
@@ -17,11 +30,11 @@ export async function getBestEffortPosition(): Promise<{
 
   // 1) Fast try (works more often on desktop)
   try {
-    const pos = await getCurrentPositionP({
+    const pos = await getCurrentPositionWithTimeout({
       enableHighAccuracy: false,
       timeout: 4000,
       maximumAge: 10 * 60 * 1000, // 10 min
-    });
+    }, 5000); // Extra 1s timeout wrapper for iOS WebKit
     const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
     localStorage.setItem("shiftx:lastLocation", JSON.stringify({ ...coords, ts: Date.now() }));
     return { coords, source: "gps_low" };
@@ -31,11 +44,11 @@ export async function getBestEffortPosition(): Promise<{
 
   // 2) Slower high accuracy try
   try {
-    const pos = await getCurrentPositionP({
+    const pos = await getCurrentPositionWithTimeout({
       enableHighAccuracy: true,
       timeout: 12000,
       maximumAge: 0,
-    });
+    }, 13000); // Extra 1s timeout wrapper for iOS WebKit
     const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
     localStorage.setItem("shiftx:lastLocation", JSON.stringify({ ...coords, ts: Date.now() }));
     return { coords, source: "gps_high" };

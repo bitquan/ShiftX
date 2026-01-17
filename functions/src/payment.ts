@@ -11,22 +11,30 @@ function isEmulator() {
   return process.env.FUNCTIONS_EMULATOR === 'true' || !!process.env.FIREBASE_EMULATOR_HUB;
 }
 
-// Only define live secret (emulator uses .env.local, never Secret Manager)
+type StripeMode = 'test' | 'live';
+
+function getStripeMode(): StripeMode {
+  if (isEmulator()) return 'test';
+  return process.env.STRIPE_MODE === 'live' ? 'live' : 'test';
+}
+
+// Define secrets (emulator uses .env.local, never Secret Manager)
 const stripeSecretLive = defineSecret('STRIPE_SECRET_KEY_LIVE');
+const stripeSecretTest = defineSecret('STRIPE_SECRET_KEY_TEST');
 
 // Conditionally include secrets only in production
-const callableOptions = isEmulator() 
+const callableOptions = isEmulator()
   ? baseCorsOptions
   : {
       ...baseCorsOptions,
-      secrets: [stripeSecretLive],
+      secrets: [stripeSecretLive, stripeSecretTest],
     };
 
 // Get Stripe from environment or throw error
 function getStripe() {
   const emulator = isEmulator();
-  const mode = emulator ? 'test' : (process.env.STRIPE_MODE === 'test' ? 'test' : 'live');
-  
+  const mode = getStripeMode();
+
   // ✅ Emulator ALWAYS uses .env.local
   if (emulator) {
     const key = process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY;
@@ -35,29 +43,44 @@ function getStripe() {
     }
     const keyType = key.startsWith('sk_test') ? 'TEST' : 'LIVE';
     console.log(`[Stripe] mode=${mode} key=${keyType} emulator=${emulator}`);
-    
+
     if (keyType !== 'TEST') {
-      console.error(`⚠️  MISMATCH: mode=${mode} but key=${keyType} - this will cause "No such payment_intent" errors!`);
+      throw new HttpsError(
+        'failed-precondition',
+        `EMULATOR requires TEST key (sk_test_*). Got ${keyType}.`
+      );
     }
-    
+
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const Stripe = require('stripe');
     return new Stripe(key, { apiVersion: '2023-10-16' });
   }
-  
+
+  if (mode === 'test') {
+    const testKey = stripeSecretTest.value();
+    if (!testKey) {
+      throw new HttpsError('failed-precondition', 'Missing STRIPE_SECRET_KEY_TEST in Secret Manager');
+    }
+    if (!testKey.startsWith('sk_test')) {
+      throw new HttpsError('failed-precondition', 'STRIPE_SECRET_KEY_TEST must be a test key (sk_test_*)');
+    }
+    console.log(`[Stripe] mode=${mode} key=TEST emulator=${emulator}`);
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Stripe = require('stripe');
+    return new Stripe(testKey, { apiVersion: '2023-10-16' });
+  }
+
   // ✅ Production uses Secret Manager (live)
   const liveKey = stripeSecretLive.value();
   if (!liveKey) {
     throw new HttpsError('failed-precondition', 'Missing STRIPE_SECRET_KEY_LIVE in Secret Manager');
   }
-  
-  const keyType = liveKey.startsWith('sk_test') ? 'TEST' : 'LIVE';
-  console.log(`[Stripe] mode=${mode} key=${keyType} emulator=${emulator}`);
-  
-  if (mode === 'live' && keyType !== 'LIVE') {
-    console.error(`⚠️  MISMATCH: mode=${mode} but key=${keyType} - using test key in production!`);
+
+  if (!liveKey.startsWith('sk_live')) {
+    throw new HttpsError('failed-precondition', 'STRIPE_SECRET_KEY_LIVE must be a live key (sk_live_*)');
   }
-  
+  console.log(`[Stripe] mode=${mode} key=LIVE emulator=${emulator}`);
+
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Stripe = require('stripe');
   return new Stripe(liveKey, { apiVersion: '2023-10-16' });
@@ -76,27 +99,64 @@ async function isStripeConnectEnabled(): Promise<boolean> {
   }
 }
 
+async function assertLivePaymentsAllowed(uid: string, ride: any | null) {
+  if (getStripeMode() !== 'live') return;
+
+  const flagsSnap = await db.collection('config').doc('runtimeFlags').get();
+  const flags = flagsSnap.data() || {};
+
+  const allowLivePayments = flags.allowLivePayments === true;
+  const pilotUids: string[] = Array.isArray(flags.livePaymentPilotUids) ? flags.livePaymentPilotUids : [];
+
+  const driverId = ride?.driverId || null;
+  const customerId = ride?.customerId || null;
+
+  const isPilot = pilotUids.includes(uid) || (driverId && pilotUids.includes(driverId)) || (customerId && pilotUids.includes(customerId));
+
+  if (!allowLivePayments || !isPilot) {
+    throw new HttpsError(
+      'failed-precondition',
+      'LIVE payments are disabled. Enable allowLivePayments and whitelist pilot UIDs.'
+    );
+  }
+}
+
 /**
  * Get driver's Stripe Connect account info
+ * MODE-AWARE: Checks mode-specific fields based on environment
  */
 async function getDriverConnectInfo(driverId: string): Promise<{
   accountId: string | null;
   status: string;
+  pilotEnabled: boolean;
 }> {
   try {
     const driverSnap = await db.collection('drivers').doc(driverId).get();
     if (!driverSnap.exists) {
-      return { accountId: null, status: 'none' };
+      return { accountId: null, status: 'none', pilotEnabled: false };
     }
     
     const driverData = driverSnap.data();
+    
+    // Use mode-specific fields (test in emulator, live in production)
+    const mode = getStripeMode();
+    const accountIdField = mode === 'test' ? 'stripeConnectAccountId_test' : 'stripeConnectAccountId_live';
+    const statusField = mode === 'test' ? 'stripeConnectStatus_test' : 'stripeConnectStatus_live';
+    
+    const accountId = driverData?.[accountIdField] || null;
+    const status = driverData?.[statusField] || 'none';
+    const pilotEnabled = driverData?.connectEnabledOverride === true;
+    
+    console.log(`[Payment] Driver Connect info: mode=${mode}, accountId=${accountId}, status=${status}, pilot=${pilotEnabled}`);
+    
     return {
-      accountId: driverData?.stripeConnectAccountId || null,
-      status: driverData?.stripeConnectStatus || 'none',
+      accountId,
+      status,
+      pilotEnabled,
     };
   } catch (error) {
     console.error('Error getting driver Connect info:', error);
-    return { accountId: null, status: 'none' };
+    return { accountId: null, status: 'none', pilotEnabled: false };
   }
 }
 
@@ -142,6 +202,7 @@ export const customerConfirmPayment = onCall<{ rideId: string }>(
     }
 
     try {
+      await assertLivePaymentsAllowed(uid, ride);
       const stripe = getStripe();
 
       // Get customer info to check for saved payment methods
@@ -244,12 +305,28 @@ export const customerConfirmPayment = onCall<{ rideId: string }>(
         // If Connect is enabled and ride has a driver, check driver's Connect status
         if (connectEnabled && ride.driverId) {
           const connectInfo = await getDriverConnectInfo(ride.driverId);
-          if (connectInfo.status === 'active' && connectInfo.accountId) {
+          
+          // Connect routing happens when:
+          // 1. Global flag ON
+          // 2. Driver has pilot override enabled (connectEnabledOverride)
+          // 3. Driver Connect status is 'active'
+          // 4. Driver has valid Connect account ID
+          if (connectInfo.pilotEnabled && 
+              connectInfo.status === 'active' && 
+              connectInfo.accountId) {
             useConnect = true;
             driverAccountId = connectInfo.accountId;
-            console.log('[customerConfirmPayment] Using Stripe Connect for driver:', {
+            console.log('[customerConfirmPayment] ✅ Using Stripe Connect for pilot driver:', {
               driverId: ride.driverId,
               accountId: driverAccountId,
+              pilotEnabled: true,
+            });
+          } else {
+            console.log('[customerConfirmPayment] ⏭️  Skipping Connect routing:', {
+              driverId: ride.driverId,
+              pilotEnabled: connectInfo.pilotEnabled,
+              status: connectInfo.status,
+              hasAccount: !!connectInfo.accountId,
             });
           }
         }
@@ -272,6 +349,7 @@ export const customerConfirmPayment = onCall<{ rideId: string }>(
             platformFeeCents: fees.platformFeeCents.toString(),
             driverPayoutCents: fees.driverPayoutCents.toString(),
             connectEnabled: connectEnabled.toString(),
+            stripeMode: getStripeMode(),
           },
         };
         
@@ -281,6 +359,8 @@ export const customerConfirmPayment = onCall<{ rideId: string }>(
           createParams.transfer_data = {
             destination: driverAccountId,
           };
+          createParams.on_behalf_of = driverAccountId;
+          createParams.transfer_group = `ride_${rideId}`;
           createParams.metadata.stripeConnectAccountId = driverAccountId;
           
           console.log('[customerConfirmPayment] Connect enabled - fee structure:', {
@@ -521,6 +601,7 @@ export const getPaymentState = onCall<{ rideId: string }>(
     }
 
     try {
+      await assertLivePaymentsAllowed(uid, ride);
       const stripe = getStripe();
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
       
@@ -674,6 +755,8 @@ export const setPaymentAuthorized = onCall<{ rideId: string }>(
     if (ride?.customerId !== uid) {
       throw new HttpsError('permission-denied', 'Not authorized');
     }
+
+    await assertLivePaymentsAllowed(uid, ride);
 
     // Get PaymentIntent to store its status
     const stripe = getStripe();

@@ -109,12 +109,16 @@ export function Profile({ onClose }: ProfileProps) {
     <div style={{
       position: 'fixed',
       inset: 0,
-      backgroundColor: 'rgba(0,0,0,0.8)',
+      backgroundColor: '#05060a',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 1000,
+      zIndex: 10000,
       padding: '1rem',
+      paddingTop: 'calc(1rem + env(safe-area-inset-top))',
+      paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))',
+      overscrollBehavior: 'none',
+      overflow: 'auto',
     }}>
       <div style={{
         backgroundColor: '#1a1a1a',
@@ -123,6 +127,8 @@ export function Profile({ onClose }: ProfileProps) {
         width: '100%',
         maxHeight: '90vh',
         overflow: 'auto',
+        overscrollBehavior: 'none',
+        WebkitOverflowScrolling: 'touch',
         border: '1px solid rgba(255,255,255,0.1)',
       }}>
         {/* Header */}

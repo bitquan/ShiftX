@@ -5,6 +5,10 @@ import { callableOptions } from './cors';
 const db = admin.firestore();
 const auth = admin.auth();
 
+function isEmulator() {
+  return process.env.FUNCTIONS_EMULATOR === 'true' || !!process.env.FIREBASE_EMULATOR_HUB;
+}
+
 interface SmokeTestSetupRequest {
   testRunId: string;
   customerEmail?: string;
@@ -22,6 +26,9 @@ interface SmokeTestCleanupRequest {
 export const smokeTestSetup = onCall<SmokeTestSetupRequest>(
   callableOptions,
   async (request) => {
+    if (!isEmulator()) {
+      throw new HttpsError('permission-denied', 'Smoke tests are emulator-only');
+    }
     const { testRunId, customerEmail, driverEmail } = request.data;
 
     if (!testRunId) {
@@ -124,6 +131,9 @@ export const smokeTestSetup = onCall<SmokeTestSetupRequest>(
 export const smokeTestCleanup = onCall<SmokeTestCleanupRequest>(
   callableOptions,
   async (request) => {
+    if (!isEmulator()) {
+      throw new HttpsError('permission-denied', 'Smoke tests are emulator-only');
+    }
     const { testRunId } = request.data;
 
     if (!testRunId) {

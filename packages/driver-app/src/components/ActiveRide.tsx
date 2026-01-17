@@ -185,18 +185,52 @@ export function ActiveRide({ rideId, currentStatus, onStatusUpdate, onCancelled 
   };
 
   const handleCancel = async () => {
-    if (!window.confirm('Cancel this ride? Rider will be notified.')) {
+    // Determine which cancel function to use based on ride status
+    const isActiveRide = currentStatus === 'started' || currentStatus === 'in_progress';
+    const cancelFunctionName = isActiveRide ? 'cancelActiveRide' : 'cancelRide';
+    
+    // Different confirmation messages based on status
+    let confirmMsg = 'Cancel this ride? Rider will be notified.';
+    if (isActiveRide) {
+      confirmMsg = 'Cancel this active ride?\n\nOptions:\n- Passenger no-show\n- Accidentally started\n- Other reason\n\nThe payment will be refunded to the customer.';
+    }
+    
+    if (!window.confirm(confirmMsg)) {
       return;
+    }
+    
+    // For active rides, ask for reason
+    let reason = 'Driver cancelled';
+    if (isActiveRide) {
+      const reasonInput = prompt(
+        'Reason for cancellation:\n\n' +
+        '1. passenger_no_show\n' +
+        '2. accidental_start\n' +
+        '3. other\n\n' +
+        'Enter 1, 2, or 3:'
+      );
+      
+      const reasons: Record<string, string> = {
+        '1': 'passenger_no_show',
+        '2': 'accidental_start',
+        '3': 'other',
+      };
+      
+      reason = reasons[reasonInput || ''] || 'other';
     }
 
     setIsCancelling(true);
     try {
       const { functions } = getInitializedClient();
       const { httpsCallable } = await import('firebase/functions');
-      const cancelRideFn = httpsCallable(functions, 'cancelRide');
-      await cancelRideFn({ rideId, reason: 'Driver cancelled' });
+      const cancelRideFn = httpsCallable(functions, cancelFunctionName);
+      const result = await cancelRideFn({ rideId, reason }) as any;
       
-      show('Ride cancelled', 'success');
+      if (result.data?.refunded) {
+        show('Ride cancelled. Customer will receive a full refund.', 'success');
+      } else {
+        show('Ride cancelled', 'success');
+      }
       
       // Notify parent to clear active ride
       if (onCancelled) {
@@ -217,7 +251,12 @@ export function ActiveRide({ rideId, currentStatus, onStatusUpdate, onCancelled 
   };
 
   return (
-    <div className="active-ride" style={{ paddingBottom: '80px' }}>
+    <div className="active-ride" style={{ 
+      paddingTop: 'calc(16px + var(--sat))',
+      paddingBottom: 'calc(80px + var(--sab))',
+      paddingLeft: 'calc(16px + var(--sal))',
+      paddingRight: 'calc(16px + var(--sar))',
+    }}>
       {/* Header Card */}
       <ActiveRideHeader
         rideId={rideId}

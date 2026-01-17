@@ -6,10 +6,11 @@ import { Rides } from './Rides';
 import { AdminLogs } from './AdminLogs';
 import { RuntimeFlags } from './RuntimeFlags';
 import { Reports } from './Reports';
+import { PaymentsAudit } from './PaymentsAudit';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 
-type Screen = 'overview' | 'drivers' | 'customers' | 'rides' | 'logs' | 'runtime-flags' | 'reports';
+type Screen = 'overview' | 'drivers' | 'customers' | 'rides' | 'payments-audit' | 'logs' | 'runtime-flags' | 'reports';
 
 export function Dashboard() {
   const [activeScreen, setActiveScreen] = useState<Screen>('overview');
@@ -53,6 +54,12 @@ export function Dashboard() {
             🚀 Rides
           </button>
           <button
+            className={activeScreen === 'payments-audit' ? 'active' : ''}
+            onClick={() => setActiveScreen('payments-audit')}
+          >
+            💳 Payments Audit
+          </button>
+          <button
             className={activeScreen === 'logs' ? 'active' : ''}
             onClick={() => setActiveScreen('logs')}
           >
@@ -82,6 +89,7 @@ export function Dashboard() {
         {activeScreen === 'drivers' && <Drivers />}
         {activeScreen === 'customers' && <Customers />}
         {activeScreen === 'rides' && <Rides />}
+        {activeScreen === 'payments-audit' && <PaymentsAudit />}
         {activeScreen === 'logs' && <AdminLogs />}
         {activeScreen === 'runtime-flags' && <RuntimeFlags />}
         {activeScreen === 'reports' && <Reports />}

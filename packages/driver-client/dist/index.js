@@ -1,9 +1,11 @@
 import { initializeApp } from 'firebase/app';
+import { connectAuthEmulator, getAuth, } from 'firebase/auth';
 import { connectFunctionsEmulator, getFunctions, httpsCallable, } from 'firebase/functions';
 import { connectFirestoreEmulator, collectionGroup, doc, getFirestore, onSnapshot, query, where, limit, orderBy, } from 'firebase/firestore';
 import { connectStorageEmulator, getStorage, } from 'firebase/storage';
 const DRIVER_CLIENT_APP_NAME = 'shiftx-driver-client';
 let driverApp = null;
+let driverAuth = null;
 let driverFunctions = null;
 let driverFirestore = null;
 let driverStorage = null;
@@ -16,6 +18,14 @@ function ensureClients() {
 export function initDriverClient(config) {
     if (!driverApp) {
         driverApp = initializeApp(config.firebaseConfig, DRIVER_CLIENT_APP_NAME);
+    }
+    // Get Auth and connect to emulator immediately
+    if (!driverAuth) {
+        driverAuth = getAuth(driverApp);
+        if (config.emulator) {
+            connectAuthEmulator(driverAuth, `http://${config.emulator.authHost}:${config.emulator.authPort}`, { disableWarnings: true });
+            console.log('[DriverClient] Auth emulator connected:', `${config.emulator.authHost}:${config.emulator.authPort}`);
+        }
     }
     // Get Firestore and connect to emulator immediately
     if (!driverFirestore) {
@@ -40,6 +50,7 @@ export function initDriverClient(config) {
     }
     return {
         app: driverApp,
+        auth: driverAuth,
         functions: driverFunctions,
         firestore: driverFirestore,
         storage: driverStorage,
@@ -128,17 +139,20 @@ export function watchDriverOffers(driverId, onOffers, onError) {
     }, onError);
 }
 export function getInitializedClient() {
-    if (!driverApp || !driverFunctions || !driverFirestore || !driverStorage) {
+    if (!driverApp || !driverAuth || !driverFunctions || !driverFirestore || !driverStorage) {
         throw new Error('Driver client not initialized');
     }
     return {
         app: driverApp,
+        auth: driverAuth,
         functions: driverFunctions,
         firestore: driverFirestore,
         storage: driverStorage,
     };
 }
 export const DEFAULT_EMULATOR_CONFIG = {
+    authHost: 'localhost',
+    authPort: 9099,
     firestoreHost: 'localhost',
     firestorePort: 8081,
     functionsHost: 'localhost',

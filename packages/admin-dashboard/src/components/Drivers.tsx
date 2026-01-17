@@ -18,6 +18,7 @@ interface Driver {
   rating?: number;
   stripeConnectAccountId?: string;
   stripeConnectStatus?: 'none' | 'pending' | 'active' | 'disabled';
+  connectEnabledOverride?: boolean;
 }
 
 export function Drivers() {
@@ -62,6 +63,29 @@ export function Drivers() {
     } catch (error) {
       console.error('Error updating driver:', error);
       alert('Failed to update driver');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleTogglePilot = async (uid: string, currentValue: boolean) => {
+    const action = currentValue ? 'disable' : 'enable';
+    if (!window.confirm(`${action === 'enable' ? 'Enable' : 'Disable'} Stripe Connect for this driver?\n\nThis controls whether they receive direct payouts via Stripe Connect.`)) {
+      return;
+    }
+
+    try {
+      setProcessing(uid);
+      const toggleConnectPilot = httpsCallable(functions, 'toggleConnectPilot');
+      await toggleConnectPilot({ driverId: uid, enabled: !currentValue });
+      
+      // Update local state
+      setDrivers(drivers.map(d => 
+        d.uid === uid ? { ...d, connectEnabledOverride: !currentValue } : d
+      ));
+    } catch (error: any) {
+      console.error('Error toggling pilot:', error);
+      alert(error?.message || 'Failed to toggle pilot status');
     } finally {
       setProcessing(null);
     }
@@ -144,19 +168,56 @@ export function Drivers() {
                     <div className="driver-rating">⭐ {driver.rating.toFixed(1)}</div>
                   )}
                   {driver.stripeConnectStatus && driver.stripeConnectStatus !== 'none' && (
-                    <div className="driver-connect" style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '4px 10px',
-                      borderRadius: '12px',
-                      fontSize: '0.75rem',
-                      marginTop: '6px',
-                      backgroundColor: driver.stripeConnectStatus === 'active' ? 'rgba(0,255,140,0.1)' : driver.stripeConnectStatus === 'pending' ? 'rgba(251,191,36,0.1)' : 'rgba(239,68,68,0.1)',
-                      color: driver.stripeConnectStatus === 'active' ? 'rgba(0,255,140,0.95)' : driver.stripeConnectStatus === 'pending' ? 'rgba(251,191,36,0.95)' : '#ef4444',
-                      border: `1px solid ${driver.stripeConnectStatus === 'active' ? 'rgba(0,255,140,0.2)' : driver.stripeConnectStatus === 'pending' ? 'rgba(251,191,36,0.2)' : 'rgba(239,68,68,0.2)'}`,
-                    }}>
-                      {driver.stripeConnectStatus === 'active' ? '💸 Payouts Active' : driver.stripeConnectStatus === 'pending' ? '⏳ Payout Setup Pending' : '⚠️ Payouts Disabled'}
+                    <div style={{ marginTop: '6px' }}>
+                      <div className="driver-connect" style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        backgroundColor: driver.stripeConnectStatus === 'active' ? 'rgba(0,255,140,0.1)' : driver.stripeConnectStatus === 'pending' ? 'rgba(251,191,36,0.1)' : 'rgba(239,68,68,0.1)',
+                        color: driver.stripeConnectStatus === 'active' ? 'rgba(0,255,140,0.95)' : driver.stripeConnectStatus === 'pending' ? 'rgba(251,191,36,0.95)' : '#ef4444',
+                        border: `1px solid ${driver.stripeConnectStatus === 'active' ? 'rgba(0,255,140,0.2)' : driver.stripeConnectStatus === 'pending' ? 'rgba(251,191,36,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                      }}>
+                        {driver.stripeConnectStatus === 'active' ? '💸 Payouts Active' : driver.stripeConnectStatus === 'pending' ? '⏳ Payout Setup Pending' : '⚠️ Payouts Disabled'}
+                      </div>
+                      {driver.stripeConnectAccountId && (
+                        <div style={{
+                          fontSize: '0.7rem',
+                          color: 'rgba(255,255,255,0.4)',
+                          marginTop: '4px',
+                          fontFamily: 'monospace',
+                        }}>
+                          Stripe: {driver.stripeConnectAccountId}
+                        </div>
+                      )}
+                      {/* Pilot Toggle - only show if Connect account exists */}
+                      {driver.stripeConnectAccountId && driver.stripeConnectStatus === 'active' && (
+                        <button
+                          onClick={() => handleTogglePilot(driver.uid, driver.connectEnabledOverride || false)}
+                          disabled={processing === driver.uid}
+                          style={{
+                            marginTop: '8px',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            fontSize: '0.7rem',
+                            fontWeight: '600',
+                            cursor: processing === driver.uid ? 'not-allowed' : 'pointer',
+                            backgroundColor: driver.connectEnabledOverride 
+                              ? 'rgba(0,255,140,0.15)' 
+                              : 'rgba(139,92,246,0.15)',
+                            border: `1px solid ${driver.connectEnabledOverride 
+                              ? 'rgba(0,255,140,0.3)' 
+                              : 'rgba(139,92,246,0.3)'}`,
+                            color: driver.connectEnabledOverride 
+                              ? 'rgba(0,255,140,0.95)' 
+                              : 'rgba(139,92,246,0.95)',
+                          }}
+                        >
+                          {driver.connectEnabledOverride ? '🚀 Pilot Enabled' : '🧪 Enable Pilot'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

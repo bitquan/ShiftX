@@ -41,12 +41,24 @@ if (import.meta.env.DEV) {
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
   if (isLocalhost) {
-    // Note: driver-client already connects emulators if config is passed,
-    // but we ensure it's only done on localhost
-    console.log('[Firebase] Running in dev mode on localhost');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 [Firebase] EMULATOR MODE ACTIVE');
+    console.log('   Environment: DEV + LOCALHOST');
+    console.log('   Auth Emulator: 127.0.0.1:9099');
+    console.log('   Firestore Emulator: 127.0.0.1:8081');
+    console.log('   Functions Emulator: 127.0.0.1:5002');
+    console.log('   Storage Emulator: 127.0.0.1:9199');
+    console.log('   ⚠️  All data is LOCAL - not touching production!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   } else {
     console.warn('[Firebase] Dev mode detected but NOT on localhost - emulators will NOT connect');
   }
+} else {
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🚀 [Firebase] PRODUCTION MODE');
+  console.log('   Environment: PRODUCTION');
+  console.log('   Target: LIVE Firebase Project');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 }
 
 console.log('[Firebase] Driver app initialized with project:', app.options.projectId);

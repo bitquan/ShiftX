@@ -1,10 +1,13 @@
 .maintenance-banner {
   position: fixed;
   top: 0;
+  padding-top: calc(48px + var(--sat));
   left: 0;
   right: 0;
   z-index: 9999;
-  padding: 12px 16px;
+  padding-left: calc(16px + var(--sal));
+  padding-right: calc(16px + var(--sar));
+  padding-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 12px;

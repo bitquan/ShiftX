@@ -18,6 +18,9 @@ interface DiagnosticInfo {
 }
 
 export function ProdDiagnostics() {
+  if (!import.meta.env.DEV) {
+    return null;
+  }
   const [info, setInfo] = useState<DiagnosticInfo | null>(null);
   const [visible, setVisible] = useState(false);
 
@@ -86,8 +89,8 @@ export function ProdDiagnostics() {
   return (
     <div style={{
       position: 'fixed',
-      top: '10px',
-      right: '10px',
+      top: 'calc(48px + var(--sat))',
+      right: 'calc(12px + var(--sar))',
       background: hasIssues ? 'rgba(220, 38, 38, 0.95)' : 'rgba(34, 34, 34, 0.95)',
       color: '#fff',
       padding: '12px 16px',

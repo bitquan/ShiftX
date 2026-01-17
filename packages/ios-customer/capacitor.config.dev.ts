@@ -4,7 +4,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * Capacitor Configuration - DEV MODE
  * 
  * For local development and testing:
- * - Loads customer app from LOCAL dev server (http://127.0.0.1:5173)
+ * - Loads customer app from LOCAL dev server (http://localhost:5173)
  * - Uses TEST Stripe keys (pk_test_...)
  * - Connects to Firebase Emulator Suite (if running)
  * 
@@ -18,6 +18,10 @@ const config: CapacitorConfig = {
   appId: 'com.shiftx.customer',
   appName: 'ShiftX Customer (Dev)',
   webDir: '../customer-app/dist',
+  server: {
+    url: 'http://localhost:5173',
+    cleartext: true,
+  },
   server: {
     url: 'http://127.0.0.1:5173',
     cleartext: true,

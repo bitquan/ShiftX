@@ -23,6 +23,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { DiagnosticsPanel } from './components/DiagnosticsPanel';
 import { ProdDiagnostics } from './components/ProdDiagnostics';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
+import { EnvironmentBadge } from './components/EnvironmentBadge';
 import { watchRuntimeFlags, RuntimeFlags } from './utils/runtimeFlags';
 import './styles.css';
 
@@ -292,6 +293,8 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
+      <div className="safe-area-shell">
+      <EnvironmentBadge />
       {runtimeFlags?.maintenanceMessage && (
         <MaintenanceBanner message={runtimeFlags.maintenanceMessage} type="warning" />
       )}
@@ -407,6 +410,7 @@ export default function App() {
       </AuthGate>
       <DiagnosticsPanel user={user} />
       <ProdDiagnostics />
+      </div>
     </ToastProvider>
     </ErrorBoundary>
   );

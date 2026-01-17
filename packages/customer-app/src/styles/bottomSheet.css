@@ -1,0 +1,108 @@
+/* Bottom Sheet Styles */
+
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(26, 26, 26, 0.98);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+  will-change: height;
+  pointer-events: auto;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Drag handle area */
+.sheet-drag-handle {
+  padding: 12px 0 8px 0;
+  display: flex;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sheet-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* The pill indicator */
+.sheet-pill {
+  width: 40px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.sheet-drag-handle:hover .sheet-pill {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Sheet content - scrollable */
+.sheet-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+}
+
+/* Hide scrollbar but keep functionality */
+.sheet-content::-webkit-scrollbar {
+  width: 0;
+  display: none;
+}
+
+/* Responsive - on larger screens, make it a centered card */
+@media (min-width: 768px) {
+  .bottom-sheet {
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 600px;
+    bottom: calc(env(safe-area-inset-bottom) + 20px);
+    border-radius: 20px;
+  }
+
+  .bottom-sheet.collapsed {
+    height: 300px !important;
+  }
+
+  .bottom-sheet.mid {
+    height: 500px !important;
+  }
+
+  .bottom-sheet.expanded {
+    height: 80vh !important;
+    max-height: 800px;
+  }
+}
+
+/* Landscape - reduce heights */
+@media (orientation: landscape) and (max-height: 600px) {
+  .bottom-sheet.collapsed {
+    height: 30vh !important;
+  }
+
+  .bottom-sheet.mid {
+    height: 55vh !important;
+  }
+
+  .bottom-sheet.expanded {
+    height: 85vh !important;
+  }
+}

@@ -19,7 +19,8 @@ export type RideEventType =
   | 'payment_intent_created'
   | 'payment_authorized'
   | 'payment_captured'
-  | 'payment_cancelled';
+  | 'payment_cancelled'
+  | 'payment_refunded';
 
 export interface RideEvent {
   type: RideEventType;

@@ -28,9 +28,9 @@ const isProduction = import.meta.env.PROD;
 // Feature flags with sensible defaults
 export const featureFlags: FeatureFlags = {
   // Dev tools - only in development
-  enableDevTools: import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true' || isDevelopment,
-  enableDebugPanel: import.meta.env.VITE_ENABLE_DEBUG_PANEL === 'true' || isDevelopment,
-  verboseLogging: import.meta.env.VITE_VERBOSE_LOGGING === 'true' || isDevelopment,
+  enableDevTools: isDevelopment,
+  enableDebugPanel: isDevelopment,
+  verboseLogging: isDevelopment,
   
   // Features - on by default
   enableScheduledCleanup: import.meta.env.VITE_ENABLE_SCHEDULED_CLEANUP !== 'false',

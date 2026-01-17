@@ -1,0 +1,27 @@
+{
+  "name": "@shiftx/ios-driver",
+  "version": "0.1.0",
+  "description": "iOS native wrapper for ShiftX Driver app (Capacitor)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:web": "cd ../driver-app && npm run build",
+    "cap:sync": "npx cap sync ios",
+    "ios:open": "npx cap open ios",
+    "ios:dev": "cp capacitor.config.dev.ts capacitor.config.ts && npx cap sync ios && npx cap open ios",
+    "ios:prod": "cp capacitor.config.prod.ts capacitor.config.ts && npx cap sync ios && npx cap open ios"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/browser": "^8.0.0",
+    "@capacitor/cli": "^8.0.1",
+    "@capacitor/core": "^8.0.1",
+    "@capacitor/ios": "^8.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

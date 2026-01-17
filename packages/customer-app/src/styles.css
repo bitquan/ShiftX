@@ -1,20 +1,65 @@
 /* Base styles */
+:root {
+  /* iOS Safe Area Insets */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #000;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+html {
+  height: 100dvh;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background-color: #05060a;
   color: #e1e6ef;
-  margin: 0;
-  padding: 0;
+  height: 100dvh;
+  overscroll-behavior: none;
 }
 
 /* Leaflet map dark theme */
 .leaflet-container {
-  background: #0b1220;
-  border-radius: 8px;
+  background: #000;
+  border-radius: 0; /* Remove border radius for full-screen map */
+}
+
+/* Leaflet controls - respect safe areas */
+.leaflet-top {
+  top: auto !important;
+}
+
+.leaflet-bottom {
+  bottom: calc(env(safe-area-inset-bottom) + 8px) !important;
+}
+
+.leaflet-left {
+  left: calc(env(safe-area-inset-left) + 8px) !important;
+}
+
+.leaflet-right {
+  right: calc(env(safe-area-inset-right) + 8px) !important;
+}
+
+/* Move zoom controls to bottom left */
+.leaflet-top.leaflet-left {
+  top: auto !important;
+  bottom: calc(env(safe-area-inset-bottom) + 80px) !important;
 }
 
 /* Map tiles with subtle brightness boost for readability */
@@ -27,8 +72,14 @@ body {
   filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.9)) drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));
 }
 
+/* THIS is the "no more white bars" hammer */
 #root {
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  background: #000;
+  overflow: hidden;
 }
 
 /* Auth gate */
@@ -36,7 +87,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100%;
   background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
 }
 
@@ -67,19 +119,29 @@ body {
 
 /* Auth wrapper */
 .auth-wrapper {
-  min-height: 100vh;
+  position: relative;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  height: 100%;
+  z-index: 1;
 }
 
 .app-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding-top: calc(4px + var(--sat));
+  padding-bottom: 20px;
+  padding-left: calc(24px + var(--sal));
+  padding-right: calc(24px + var(--sar));
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.95);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
 }
 
 .app-header h1 {
@@ -92,17 +154,27 @@ body {
 }
 
 .app-content {
+  position: relative;
   flex: 1;
   padding: 24px;
   overflow-y: auto;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  z-index: 10;
 }
 
 /* Screen container */
 .screen-container {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 100%;
+  height: 100dvh;
+  overflow-y: auto;
+  padding: 1rem;
+  padding-top: calc(1rem + env(safe-area-inset-top));
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
 }
 
 .card {
@@ -290,8 +362,8 @@ button:disabled {
 /* Toast notifications */
 .toast-container {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: calc(24px + var(--sab));
+  right: calc(24px + var(--sar));
   display: flex;
   flex-direction: column;
   gap: 12px;

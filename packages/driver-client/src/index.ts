@@ -1,5 +1,10 @@
 import { FirebaseApp, FirebaseOptions, initializeApp } from 'firebase/app';
 import {
+  Auth,
+  connectAuthEmulator,
+  getAuth,
+} from 'firebase/auth';
+import {
   Functions,
   connectFunctionsEmulator,
   getFunctions,
@@ -38,6 +43,7 @@ import {
 const DRIVER_CLIENT_APP_NAME = 'shiftx-driver-client';
 
 let driverApp: FirebaseApp | null = null;
+let driverAuth: Auth | null = null;
 let driverFunctions: Functions | null = null;
 let driverFirestore: Firestore | null = null;
 let driverStorage: FirebaseStorage | null = null;
@@ -45,6 +51,8 @@ let driverStorage: FirebaseStorage | null = null;
 export interface DriverClientConfig {
   firebaseConfig: FirebaseOptions;
   emulator?: {
+    authHost: string;
+    authPort: number;
     firestoreHost: string;
     firestorePort: number;
     functionsHost: string;
@@ -56,6 +64,7 @@ export interface DriverClientConfig {
 
 export interface InitializedDriverClient {
   app: FirebaseApp;
+  auth: Auth;
   functions: Functions;
   firestore: Firestore;
   storage: FirebaseStorage;
@@ -71,6 +80,15 @@ function ensureClients(): { functions: Functions; firestore: Firestore; storage:
 export function initDriverClient(config: DriverClientConfig): InitializedDriverClient {
   if (!driverApp) {
     driverApp = initializeApp(config.firebaseConfig, DRIVER_CLIENT_APP_NAME);
+  }
+
+  // Get Auth and connect to emulator immediately
+  if (!driverAuth) {
+    driverAuth = getAuth(driverApp);
+    if (config.emulator) {
+      connectAuthEmulator(driverAuth, `http://${config.emulator.authHost}:${config.emulator.authPort}`, { disableWarnings: true });
+      console.log('[DriverClient] Auth emulator connected:', `${config.emulator.authHost}:${config.emulator.authPort}`);
+    }
   }
 
   // Get Firestore and connect to emulator immediately
@@ -99,6 +117,7 @@ export function initDriverClient(config: DriverClientConfig): InitializedDriverC
 
   return {
     app: driverApp,
+    auth: driverAuth!,
     functions: driverFunctions,
     firestore: driverFirestore,
     storage: driverStorage,
@@ -256,11 +275,12 @@ export function watchDriverOffers(
 }
 
 export function getInitializedClient(): InitializedDriverClient {
-  if (!driverApp || !driverFunctions || !driverFirestore || !driverStorage) {
+  if (!driverApp || !driverAuth || !driverFunctions || !driverFirestore || !driverStorage) {
     throw new Error('Driver client not initialized');
   }
   return {
     app: driverApp,
+    auth: driverAuth,
     functions: driverFunctions,
     firestore: driverFirestore,
     storage: driverStorage,
@@ -268,6 +288,8 @@ export function getInitializedClient(): InitializedDriverClient {
 }
 
 export const DEFAULT_EMULATOR_CONFIG = {
+  authHost: 'localhost',
+  authPort: 9099,
   firestoreHost: 'localhost',
   firestorePort: 8081,
   functionsHost: 'localhost',

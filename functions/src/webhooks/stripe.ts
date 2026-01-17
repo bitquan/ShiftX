@@ -167,7 +167,19 @@ export const stripeWebhook = onRequest(
           break;
           
         case 'capability.updated':
-          await handleCapabilityUpdated(event.data.object as any, event.account);
+          await handleCapabilityUpdated(event.data.object as any, event.account, event.livemode);
+          break;
+
+        case 'transfer.created':
+          await handleTransferCreated(event.data.object as any);
+          break;
+
+        case 'transfer.failed':
+          await handleTransferFailed(event.data.object as any);
+          break;
+
+        case 'payout.failed':
+          await handlePayoutFailed(event.data.object as any, event.account, event.livemode);
           break;
           
         default:
@@ -260,12 +272,138 @@ async function handlePaymentIntentSucceeded(paymentIntent: any) {
   }
   
   await rideRef.update(updateData);
+
+  // Alert if Connect routing was expected but no transfer destination exists
+  const connectEnabled = paymentIntent.metadata?.connectEnabled === 'true';
+  if (connectEnabled && !paymentIntent.transfer_data?.destination) {
+    await rideRef.update({
+      paymentAuditTransferMissing: true,
+      paymentAuditAtMs: Date.now(),
+      updatedAtMs: Date.now(),
+    });
+
+    await db.collection('adminLogs').add({
+      action: 'payment_captured_missing_transfer',
+      details: {
+        rideId,
+        paymentIntentId: paymentIntent.id,
+      },
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      timestampMs: Date.now(),
+    });
+  }
   
   // Log event
   await logWebhookEvent(rideId, 'payment_captured', {
     amount: paymentIntent.amount_received,
     status: paymentIntent.status,
     connectUsed: !!paymentIntent.transfer_data,
+  });
+}
+
+function extractRideIdFromTransfer(transfer: any): string | null {
+  if (transfer.metadata?.rideId) return transfer.metadata.rideId;
+  if (transfer.transfer_group && transfer.transfer_group.startsWith('ride_')) {
+    return transfer.transfer_group.replace('ride_', '');
+  }
+  return null;
+}
+
+/**
+ * Handle transfer.created
+ */
+async function handleTransferCreated(transfer: any) {
+  const rideId = extractRideIdFromTransfer(transfer);
+  console.log('[Webhook] Transfer created:', {
+    transferId: transfer.id,
+    rideId,
+    amount: transfer.amount,
+    destination: transfer.destination,
+  });
+
+  if (!rideId) {
+    await db.collection('adminLogs').add({
+      action: 'transfer_created_unlinked',
+      details: {
+        transferId: transfer.id,
+        destination: transfer.destination,
+      },
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      timestampMs: Date.now(),
+    });
+    return;
+  }
+
+  await db.collection('rides').doc(rideId).update({
+    connectTransferId: transfer.id,
+    connectTransferStatus: transfer.status || 'created',
+    transferDestination: transfer.destination || null,
+    updatedAtMs: Date.now(),
+  });
+}
+
+/**
+ * Handle transfer.failed
+ */
+async function handleTransferFailed(transfer: any) {
+  const rideId = extractRideIdFromTransfer(transfer);
+  console.warn('[Webhook] Transfer failed:', {
+    transferId: transfer.id,
+    rideId,
+    amount: transfer.amount,
+    destination: transfer.destination,
+  });
+
+  if (rideId) {
+    await db.collection('rides').doc(rideId).update({
+      connectTransferId: transfer.id,
+      connectTransferStatus: 'failed',
+      connectTransferFailedAtMs: Date.now(),
+      connectTransferError: transfer.failure_message || transfer.failure_code || 'transfer_failed',
+      updatedAtMs: Date.now(),
+    });
+  }
+
+  await db.collection('adminLogs').add({
+    action: 'transfer_failed',
+    details: {
+      transferId: transfer.id,
+      rideId,
+      destination: transfer.destination,
+      amount: transfer.amount,
+      failureCode: transfer.failure_code || null,
+      failureMessage: transfer.failure_message || null,
+    },
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    timestampMs: Date.now(),
+  });
+}
+
+/**
+ * Handle payout.failed
+ */
+async function handlePayoutFailed(payout: any, accountId: string | undefined, livemode: boolean) {
+  console.warn('[Webhook] Payout failed:', {
+    payoutId: payout.id,
+    accountId,
+    livemode,
+    amount: payout.amount,
+    failureCode: payout.failure_code,
+    failureMessage: payout.failure_message,
+  });
+
+  await db.collection('adminLogs').add({
+    action: 'payout_failed',
+    details: {
+      payoutId: payout.id,
+      accountId: accountId || null,
+      livemode,
+      amount: payout.amount,
+      failureCode: payout.failure_code || null,
+      failureMessage: payout.failure_message || null,
+    },
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    timestampMs: Date.now(),
   });
 }
 
@@ -387,10 +525,12 @@ async function handleAccountUpdated(account: any) {
     chargesEnabled: account.charges_enabled,
     payoutsEnabled: account.payouts_enabled,
   });
+  const accountIdField = account.livemode ? 'stripeConnectAccountId_live' : 'stripeConnectAccountId_test';
+  const statusField = account.livemode ? 'stripeConnectStatus_live' : 'stripeConnectStatus_test';
   
   // Find driver by Connect account ID
   const driversSnap = await db.collection('drivers')
-    .where('stripeConnectAccountId', '==', account.id)
+    .where(accountIdField, '==', account.id)
     .limit(1)
     .get();
   
@@ -411,7 +551,7 @@ async function handleAccountUpdated(account: any) {
   }
   
   await db.collection('drivers').doc(driverId).update({
-    stripeConnectStatus: status,
+    [statusField]: status,
     stripeConnectChargesEnabled: account.charges_enabled,
     stripeConnectPayoutsEnabled: account.payouts_enabled,
     updatedAtMs: Date.now(),
@@ -426,7 +566,11 @@ async function handleAccountUpdated(account: any) {
 /**
  * Handle capability.updated
  */
-async function handleCapabilityUpdated(capability: any, accountId: string | undefined) {
+async function handleCapabilityUpdated(
+  capability: any,
+  accountId: string | undefined,
+  livemode: boolean
+) {
   if (!accountId) {
     console.log('[Webhook] No account ID for capability update');
     return;
@@ -439,8 +583,10 @@ async function handleCapabilityUpdated(capability: any, accountId: string | unde
   });
   
   // Find driver by Connect account ID
+  const accountIdField = livemode ? 'stripeConnectAccountId_live' : 'stripeConnectAccountId_test';
+
   const driversSnap = await db.collection('drivers')
-    .where('stripeConnectAccountId', '==', accountId)
+    .where(accountIdField, '==', accountId)
     .limit(1)
     .get();
   

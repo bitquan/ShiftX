@@ -20,6 +20,27 @@ export function AuthGate({ user, loading = false, children, isSigningOutRef, dri
   const [isSignUp, setIsSignUp] = React.useState(false);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [headerVisible, setHeaderVisible] = React.useState(true);
+  const lastScrollY = React.useRef(0);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+        // Scrolling down & past 50px
+        setHeaderVisible(false);
+      } else if (currentScrollY < lastScrollY.current) {
+        // Scrolling up
+        setHeaderVisible(true);
+      }
+      
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +180,10 @@ export function AuthGate({ user, loading = false, children, isSigningOutRef, dri
 
   return (
     <div className="auth-wrapper">
-      <div className="app-header">
+      <div className="app-header safe-header" style={{
+        transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)',
+        transition: 'transform 0.3s ease-in-out',
+      }}>
         <h1>ShiftX Driver</h1>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <DebugPanel driverProfile={driverProfile || null} currentRideId={currentRideId} driverUid={user?.uid} />

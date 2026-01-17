@@ -265,7 +265,12 @@ export function DriverHome({ driverId, profile, hasActiveRide, activeRideId, pen
   const isTransitioning = onlineState === 'going_online' || onlineState === 'going_offline';
 
   return (
-    <div className="driver-home" style={{ paddingBottom: '80px' }}>
+    <div className="driver-home" style={{ 
+      paddingTop: 'calc(16px + var(--sat))',
+      paddingBottom: 'calc(80px + var(--sab))',
+      paddingLeft: 'calc(16px + var(--sal))',
+      paddingRight: 'calc(16px + var(--sar))',
+    }}>
       {/* Card 1: Driver Status - New Component */}
       <DriverStatusCard
         driverId={driverId}

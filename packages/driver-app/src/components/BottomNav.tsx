@@ -17,6 +17,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
 
   return (
     <div
+      className="safe-bottom-nav"
       style={{
         position: 'fixed',
         bottom: 0,

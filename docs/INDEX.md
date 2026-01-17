@@ -4,6 +4,7 @@
 
 ### Getting Started
 - [README](../README.md) - Main project overview
+- [DEV_ONBOARDING](DEV_ONBOARDING.md) - Developer onboarding checklist
 - [PROJECT_STATUS](PROJECT_STATUS.md) - **Current status & recent updates**
 - [SETUP](SETUP.md) - Development environment setup
 - [DEVELOPMENT](DEVELOPMENT.md) - Development workflow and best practices
@@ -22,6 +23,7 @@
 
 ### 🚀 Deployment & Production (`/deployment/`)
 - [DEPLOYMENT](deployment/DEPLOYMENT.md) - Deployment procedures
+- [PRODUCTION_DEPLOYMENT_PLAN](deployment/PRODUCTION_DEPLOYMENT_PLAN.md) - Web + backend + iOS rollout plan
 - [PRODUCTION_DEPLOYMENT](deployment/PRODUCTION_DEPLOYMENT.md) - Current production deployment status ✨
 - [PRODUCTION_READINESS](deployment/PRODUCTION_READINESS.md) - Production checklist
 - [PRODUCTION_AUDIT](deployment/PRODUCTION_AUDIT.md) - Production deployment audit

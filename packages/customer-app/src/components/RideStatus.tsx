@@ -48,6 +48,7 @@ interface RideStatusProps {
 
 const RIDE_TIMELINE = ['requested', 'dispatching', 'offered', 'accepted', 'started', 'in_progress', 'completed'] as const;
 const CANCELLABLE_STATES = ['requested', 'dispatching', 'offered', 'accepted'];
+const ACTIVE_CANCELLABLE_STATES = ['started', 'in_progress'];
 
 export function RideStatus({ rideId, onRideCompleted, onRideRetry, runtimeFlags }: RideStatusProps) {
   const { show } = useToast();
@@ -56,6 +57,7 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry, runtimeFlags 
   const [ride, setRide] = useState<Ride | null>(null);
   const [loading, setLoading] = useState(false);
   const [canCancel, setCanCancel] = useState(false);
+  const [canCancelActive, setCanCancelActive] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const [searchTimeRemaining, setSearchTimeRemaining] = useState<number | null>(null);
@@ -111,6 +113,7 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry, runtimeFlags 
 
           // Determine if ride can be cancelled: only in specific states
           setCanCancel(CANCELLABLE_STATES.includes(rideData.status as string));
+          setCanCancelActive(ACTIVE_CANCELLABLE_STATES.includes(rideData.status as string));
           setCancelError(null); // Clear any previous error when status updates
         }
       },
@@ -198,6 +201,57 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry, runtimeFlags 
       await cancelRideFn({ rideId, reason: 'Changed plans' });
       show('Ride cancelled', 'success');
       setCanCancel(false);
+    } catch (error: unknown) {
+      const err = error as any;
+      const errorMsg = err?.message || 'Unknown error';
+      // Handle common Firebase/function errors gracefully
+      let userMsg = errorMsg;
+      if (errorMsg.includes('permission-denied') || errorMsg.includes('PERMISSION_DENIED')) {
+        userMsg = 'No permission to cancel this ride';
+      } else if (errorMsg.includes('not-found') || errorMsg.includes('NOT_FOUND')) {
+        userMsg = 'Ride not found';
+      } else if (errorMsg.includes('failed-precondition') || errorMsg.includes('FAILED_PRECONDITION')) {
+        userMsg = 'Ride cannot be cancelled in its current state';
+      }
+      setCancelError(userMsg);
+      show(`Failed to cancel ride: ${userMsg}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelActiveRide = async () => {
+    if (!canCancelActive) {
+      const msg = 'Cannot cancel ride in current state';
+      setCancelError(msg);
+      show(msg, 'error');
+      return;
+    }
+
+    // Confirm cancellation with warning
+    if (!window.confirm(
+      'Cancel this active ride?\n\n' +
+      'The ride will be cancelled and you will receive a full refund.\n\n' +
+      'Are you sure you want to cancel?'
+    )) {
+      return;
+    }
+
+    setLoading(true);
+    setCancelError(null);
+    try {
+      const cancelActiveRideFn = httpsCallable(functions, 'cancelActiveRide');
+      const result = await cancelActiveRideFn({ 
+        rideId, 
+        reason: 'Customer no longer needs ride' 
+      }) as any;
+      
+      if (result.data.refunded) {
+        show('Ride cancelled. You will receive a full refund.', 'success');
+      } else {
+        show('Ride cancelled', 'success');
+      }
+      setCanCancelActive(false);
     } catch (error: unknown) {
       const err = error as any;
       const errorMsg = err?.message || 'Unknown error';
@@ -347,6 +401,40 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry, runtimeFlags 
               }}
               disabled={runtimeFlags?.disablePayments || false}
             />
+          </div>
+        )}
+
+        {/* Cancel Active Ride Button */}
+        {canCancelActive && (
+          <div style={{
+            marginBottom: '1rem',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(239,68,68,0.05)',
+            border: '1px solid rgba(239,68,68,0.2)',
+            padding: '1.5rem',
+          }}>
+            <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: 'rgba(239,68,68,0.95)' }}>
+              ⚠️ Need to Cancel?
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginBottom: '1rem' }}>
+              You can cancel this active ride. You will receive a full refund if payment was already captured.
+            </p>
+            <button
+              onClick={handleCancelActiveRide}
+              disabled={loading}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: loading ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.95)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.95rem',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loading ? 'Cancelling...' : 'Cancel Active Ride'}
+            </button>
           </div>
         )}
 

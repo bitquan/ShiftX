@@ -1,0 +1,49 @@
+:root {
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+  --safe-left: env(safe-area-inset-left);
+  --safe-right: env(safe-area-inset-right);
+}
+
+/* Kill the white background that shows around/behind the webview */
+html,
+body {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  width: 100%;
+  margin: 0;
+  background: #05060a; /* match your dark theme */
+}
+
+#root {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  background: #05060a; /* prevents the iOS "white bar" */
+}
+
+/* Wrapper that makes ALL screens safe-area aware */
+.safe-area-shell {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  background: #05060a;
+}
+
+/* Any fixed header should sit below the notch */
+.safe-header {
+  padding-top: 8px;
+}
+
+/* Bottom nav should not float over the home indicator */
+.safe-bottom-nav {
+  padding-bottom: max(8px, var(--safe-bottom));
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+}

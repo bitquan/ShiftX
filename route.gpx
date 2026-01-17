@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="ShiftX" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>ShiftX Test Drive</name>
+    <trkseg>
+      <!-- Start: Pickup location - 10 second intervals for smoother, longer playback -->
+      <trkpt lat="38.949005" lon="-77.418121"><time>2026-01-16T00:00:00Z</time></trkpt>
+      <trkpt lat="38.949100" lon="-77.418000"><time>2026-01-16T00:00:10Z</time></trkpt>
+      <trkpt lat="38.949200" lon="-77.417900"><time>2026-01-16T00:00:20Z</time></trkpt>
+      <trkpt lat="38.949300" lon="-77.417800"><time>2026-01-16T00:00:30Z</time></trkpt>
+      <trkpt lat="38.949400" lon="-77.417700"><time>2026-01-16T00:00:40Z</time></trkpt>
+      <trkpt lat="38.949500" lon="-77.417600"><time>2026-01-16T00:00:50Z</time></trkpt>
+      <trkpt lat="38.949600" lon="-77.417500"><time>2026-01-16T00:01:00Z</time></trkpt>
+      <trkpt lat="38.949700" lon="-77.417400"><time>2026-01-16T00:01:10Z</time></trkpt>
+      <trkpt lat="38.949800" lon="-77.417300"><time>2026-01-16T00:01:20Z</time></trkpt>
+      <trkpt lat="38.949900" lon="-77.417200"><time>2026-01-16T00:01:30Z</time></trkpt>
+      <trkpt lat="38.950000" lon="-77.417100"><time>2026-01-16T00:01:40Z</time></trkpt>
+      <trkpt lat="38.950100" lon="-77.417000"><time>2026-01-16T00:01:50Z</time></trkpt>
+      
+      <!-- Middle section -->
+      <trkpt lat="38.950200" lon="-77.416900"><time>2026-01-16T00:02:00Z</time></trkpt>
+      <trkpt lat="38.950300" lon="-77.416800"><time>2026-01-16T00:02:10Z</time></trkpt>
+      <trkpt lat="38.950400" lon="-77.416700"><time>2026-01-16T00:02:20Z</time></trkpt>
+      <trkpt lat="38.950500" lon="-77.416600"><time>2026-01-16T00:02:30Z</time></trkpt>
+      <trkpt lat="38.950600" lon="-77.416500"><time>2026-01-16T00:02:40Z</time></trkpt>
+      <trkpt lat="38.950700" lon="-77.416400"><time>2026-01-16T00:02:50Z</time></trkpt>
+      <trkpt lat="38.950800" lon="-77.416300"><time>2026-01-16T00:03:00Z</time></trkpt>
+      <trkpt lat="38.950900" lon="-77.416200"><time>2026-01-16T00:03:10Z</time></trkpt>
+      <trkpt lat="38.951000" lon="-77.416100"><time>2026-01-16T00:03:20Z</time></trkpt>
+      <trkpt lat="38.951100" lon="-77.416000"><time>2026-01-16T00:03:30Z</time></trkpt>
+      <trkpt lat="38.951200" lon="-77.415900"><time>2026-01-16T00:03:40Z</time></trkpt>
+      <trkpt lat="38.951300" lon="-77.415800"><time>2026-01-16T00:03:50Z</time></trkpt>
+      <trkpt lat="38.951400" lon="-77.415700"><time>2026-01-16T00:04:00Z</time></trkpt>
+      <trkpt lat="38.951500" lon="-77.415600"><time>2026-01-16T00:04:10Z</time></trkpt>
+      <trkpt lat="38.951600" lon="-77.415500"><time>2026-01-16T00:04:20Z</time></trkpt>
+      <trkpt lat="38.951700" lon="-77.415400"><time>2026-01-16T00:04:30Z</time></trkpt>
+      <trkpt lat="38.951800" lon="-77.415300"><time>2026-01-16T00:04:40Z</time></trkpt>
+      <trkpt lat="38.951900" lon="-77.415200"><time>2026-01-16T00:04:50Z</time></trkpt>
+      <trkpt lat="38.952000" lon="-77.415100"><time>2026-01-16T00:05:00Z</time></trkpt>
+      
+      <!-- Final stretch -->
+      <trkpt lat="38.952100" lon="-77.415000"><time>2026-01-16T00:05:10Z</time></trkpt>
+      <trkpt lat="38.952200" lon="-77.414900"><time>2026-01-16T00:05:20Z</time></trkpt>
+      <trkpt lat="38.952300" lon="-77.414800"><time>2026-01-16T00:05:30Z</time></trkpt>
+      <trkpt lat="38.952400" lon="-77.414700"><time>2026-01-16T00:05:40Z</time></trkpt>
+      <trkpt lat="38.952500" lon="-77.414600"><time>2026-01-16T00:05:50Z</time></trkpt>
+      <trkpt lat="38.952600" lon="-77.414500"><time>2026-01-16T00:06:00Z</time></trkpt>
+      <trkpt lat="38.952700" lon="-77.414400"><time>2026-01-16T00:06:10Z</time></trkpt>
+      <trkpt lat="38.952800" lon="-77.414300"><time>2026-01-16T00:06:20Z</time></trkpt>
+      <trkpt lat="38.952900" lon="-77.414200"><time>2026-01-16T00:06:30Z</time></trkpt>
+      
+      <!-- End: Dropoff location -->
+      <trkpt lat="38.953000" lon="-77.414100"><time>2026-01-16T00:06:40Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -3,6 +3,8 @@ import { httpsCallable } from 'firebase/functions';
 import { getInitializedClient } from '@shiftx/driver-client';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth } from '../firebase';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
 interface LedgerEntry {
   rideId: string;
@@ -33,6 +35,7 @@ export function Wallet() {
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>({ enabled: false, status: 'none' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [connectLoading, setConnectLoading] = useState(false);
 
   useEffect(() => {
     loadWallet();
@@ -54,10 +57,21 @@ export function Wallet() {
       (snap) => {
         if (snap.exists()) {
           const data = snap.data();
+          // Check mode-specific fields (test in dev, live in production)
+          const isDev = import.meta.env.DEV;
+          const accountId = isDev 
+            ? data?.stripeConnectAccountId_test 
+            : data?.stripeConnectAccountId_live;
+          const status = isDev
+            ? data?.stripeConnectStatus_test
+            : data?.stripeConnectStatus_live;
+          
+          console.log('[Wallet] Connect status update:', { isDev, accountId, status });
+          
           setConnectStatus(prev => ({
             ...prev,
-            status: data?.stripeConnectStatus || 'none',
-            accountId: data?.stripeConnectAccountId,
+            status: status || 'none',
+            accountId: accountId,
           }));
         }
       }
@@ -82,6 +96,73 @@ export function Wallet() {
       setError(err?.message || 'Failed to load earnings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSetupPayouts = async () => {
+    // Prevent double-clicks
+    if (connectLoading) {
+      console.log('[Wallet] Setup already in progress, ignoring click');
+      return;
+    }
+
+    console.log('[Wallet] Setup payouts button clicked');
+    
+    try {
+      setConnectLoading(true);
+      console.log('[Wallet] Getting Firebase client...');
+      const { functions } = getInitializedClient();
+      
+      // First, create Connect account if needed
+      if (!connectStatus.accountId) {
+        console.log('[Wallet] Creating Connect account...');
+        const createAccount = httpsCallable(functions, 'createConnectAccount');
+        const createResult = await createAccount({});
+        const accountData = createResult.data as any;
+        console.log('[Wallet] Connect account created:', accountData.accountId);
+      } else {
+        console.log('[Wallet] Using existing account:', connectStatus.accountId);
+      }
+      
+      // Get onboarding link (function will auto-detect localhost vs production URLs)
+      console.log('[Wallet] Getting onboarding link...');
+      const getLink = httpsCallable(functions, 'getConnectOnboardingLink');
+      const linkResult = await getLink({});
+      const linkData = linkResult.data as any;
+      console.log('[Wallet] Onboarding link received:', linkData.url);
+      
+      // Open in new window (or use Capacitor Browser plugin on mobile)
+      console.log('[Wallet] Opening onboarding link...');
+      
+      // Use Capacitor Browser for iOS/Android, window.open for web
+      if (Capacitor.isNativePlatform()) {
+        console.log('[Wallet] Opening in native browser...');
+        await Browser.open({ url: linkData.url });
+        console.log('[Wallet] Browser opened successfully');
+      } else {
+        console.log('[Wallet] Opening in web browser...');
+        const opened = window.open(linkData.url, '_blank');
+        
+        if (!opened) {
+          console.error('[Wallet] Failed to open window - popup blocked?');
+          alert('Please allow popups to continue with payout setup.\n\nLink: ' + linkData.url);
+        } else {
+          console.log('[Wallet] Window opened successfully');
+        }
+      }
+      
+    } catch (err: any) {
+      console.error('[Wallet] Error setting up payouts:', err);
+      console.error('[Wallet] Error details:', {
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        stack: err?.stack,
+      });
+      alert(`Failed to setup payouts: ${err?.message || 'Unknown error'}\n\nCheck console for details.`);
+    } finally {
+      console.log('[Wallet] Setup payouts complete, loading=false');
+      setConnectLoading(false);
     }
   };
 
@@ -129,7 +210,10 @@ export function Wallet() {
   return (
     <div style={{
       minHeight: '100vh',
-      paddingBottom: '80px',
+      paddingTop: 'calc(0px + var(--sat))',
+      paddingBottom: 'calc(80px + var(--sab))',
+      paddingLeft: 'var(--sal)',
+      paddingRight: 'var(--sar)',
       backgroundColor: '#0a0e27',
     }}>
       {/* Header */}
@@ -146,23 +230,27 @@ export function Wallet() {
         }}>
           💰 Earnings
         </h1>
+        {/* Debug info */}
+        <div style={{
+          marginTop: '0.5rem',
+          fontSize: '0.7rem',
+          color: 'rgba(255,255,255,0.4)',
+        }}>
+          Connect: {connectStatus.enabled ? 'ON' : 'OFF'} | Status: {connectStatus.status} | Account: {connectStatus.accountId || 'none'}
+        </div>
       </div>
 
       {/* Connect Status Banner */}
-      {connectStatus.enabled && (
+      {connectStatus.enabled && connectStatus.status !== 'active' && (
         <div style={{
           margin: '1rem',
           padding: '1rem',
           borderRadius: '8px',
-          backgroundColor: connectStatus.status === 'active' 
-            ? 'rgba(0,255,140,0.05)' 
-            : connectStatus.status === 'pending'
+          backgroundColor: connectStatus.status === 'pending'
             ? 'rgba(251,191,36,0.05)'
             : 'rgba(139,92,246,0.05)',
           border: `1px solid ${
-            connectStatus.status === 'active'
-              ? 'rgba(0,255,140,0.2)'
-              : connectStatus.status === 'pending'
+            connectStatus.status === 'pending'
               ? 'rgba(251,191,36,0.2)'
               : 'rgba(139,92,246,0.2)'
           }`,
@@ -173,7 +261,7 @@ export function Wallet() {
             gap: '0.75rem',
           }}>
             <div style={{ fontSize: '1.5rem' }}>
-              {connectStatus.status === 'active' ? '✓' : connectStatus.status === 'pending' ? '⏳' : '💳'}
+              {connectStatus.status === 'pending' ? '⏳' : '💳'}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{
@@ -182,9 +270,7 @@ export function Wallet() {
                 color: '#fff',
                 marginBottom: '4px',
               }}>
-                {connectStatus.status === 'active' 
-                  ? 'Payouts Active'
-                  : connectStatus.status === 'pending'
+                {connectStatus.status === 'pending'
                   ? 'Payout Setup Pending'
                   : 'Direct Payouts Available'}
               </div>
@@ -192,23 +278,92 @@ export function Wallet() {
                 fontSize: '0.75rem',
                 color: 'rgba(255,255,255,0.6)',
               }}>
-                {connectStatus.status === 'active'
-                  ? 'Your earnings are automatically transferred after each completed ride'
-                  : connectStatus.status === 'pending'
+                {connectStatus.status === 'pending'
                   ? 'Complete your payout setup to receive automatic transfers'
-                  : 'Enable Stripe Connect in settings to receive direct payouts'}
+                  : 'Set up automatic earnings transfers with Stripe'}
               </div>
             </div>
           </div>
-          {connectStatus.status === 'active' && (
-            <div style={{
+          <button
+            onClick={() => {
+              console.log('[Wallet] Test button clicked!');
+              alert('Button clicks are working!');
+            }}
+            style={{
               marginTop: '0.75rem',
-              fontSize: '0.7rem',
-              color: 'rgba(255,255,255,0.4)',
-            }}>
-              Platform fees: $1.50 per ride • Net earnings shown below
+              width: '100%',
+              padding: '8px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '0.75rem',
+              cursor: 'pointer',
+            }}
+          >
+            🧪 Test Button Click
+          </button>
+          <button
+            onClick={handleSetupPayouts}
+            disabled={connectLoading}
+            style={{
+              marginTop: '0.5rem',
+              width: '100%',
+              padding: '12px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(0,255,140,0.15)',
+              border: '1px solid rgba(0,255,140,0.3)',
+              color: 'rgba(0,255,140,0.95)',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              cursor: connectLoading ? 'not-allowed' : 'pointer',
+              opacity: connectLoading ? 0.5 : 1,
+            }}
+          >
+            {connectLoading ? '⏳ Loading...' : '🚀 Set Up Payouts'}
+          </button>
+        </div>
+      )}
+
+      {/* Active Status Banner */}
+      {connectStatus.enabled && connectStatus.status === 'active' && (
+        <div style={{
+          margin: '1rem',
+          padding: '1rem',
+          borderRadius: '8px',
+          backgroundColor: 'rgba(0,255,140,0.05)',
+          border: '1px solid rgba(0,255,140,0.2)',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+          }}>
+            <div style={{ fontSize: '1.5rem' }}>✓</div>
+            <div style={{ flex: 1 }}>
+              <div style={{
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                color: '#fff',
+                marginBottom: '4px',
+              }}>
+                Payouts Active
+              </div>
+              <div style={{
+                fontSize: '0.75rem',
+                color: 'rgba(255,255,255,0.6)',
+              }}>
+                Your earnings are automatically transferred after each completed ride
+              </div>
             </div>
-          )}
+          </div>
+          <div style={{
+            marginTop: '0.75rem',
+            fontSize: '0.7rem',
+            color: 'rgba(255,255,255,0.4)',
+          }}>
+            Platform fees: $1.50 per ride • Net earnings shown below
+          </div>
         </div>
       )}
 
@@ -382,7 +537,7 @@ export function Wallet() {
       <div style={{
         padding: '1rem',
         position: 'fixed',
-        bottom: '80px',
+        bottom: 'calc(80px + var(--sab))',
         left: '0',
         right: '0',
         backgroundColor: 'rgba(10,14,39,0.95)',

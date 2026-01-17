@@ -9,7 +9,7 @@ interface EnvironmentInfo {
   firebaseMode: 'EMULATOR' | 'PRODUCTION';
 }
 
-export function EnvironmentBadge() {
+export function EnvironmentBadge({ inline = false }: { inline?: boolean } = {}) {
   const [envInfo, setEnvInfo] = useState<EnvironmentInfo | null>(null);
 
   useEffect(() => {
@@ -36,24 +36,31 @@ export function EnvironmentBadge() {
   const isDev = envInfo.env === 'DEV';
   const isTestMode = envInfo.stripeMode === 'TEST';
 
+  const baseStyle: React.CSSProperties = {
+    fontSize: '11px',
+    fontWeight: 'bold',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    backgroundColor: isDev ? '#10b981' : '#ef4444',
+    color: 'white',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+    fontFamily: 'monospace',
+    cursor: 'pointer',
+    userSelect: 'none',
+  };
+
+  const positionStyle: React.CSSProperties = inline
+    ? {}
+    : {
+        position: 'fixed',
+        top: 'calc(env(safe-area-inset-top) + 4px)',
+        right: 'calc(env(safe-area-inset-right) + 80px)',
+        zIndex: 10001,
+      };
+
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: '8px',
-        right: '8px',
-        zIndex: 9999,
-        fontSize: '11px',
-        fontWeight: 'bold',
-        padding: '4px 8px',
-        borderRadius: '4px',
-        backgroundColor: isDev ? '#10b981' : '#ef4444',
-        color: 'white',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-        fontFamily: 'monospace',
-        cursor: 'pointer',
-        userSelect: 'none',
-      }}
+      style={{ ...baseStyle, ...positionStyle }}
       title={`Hostname: ${envInfo.hostname}\nStripe: ${envInfo.stripeMode}\nFirebase: ${envInfo.firebaseMode}`}
     >
       {isDev ? '🟢 DEV' : '🔴 PROD'}

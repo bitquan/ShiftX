@@ -208,7 +208,7 @@ body {
 }
 
 /* Drivers */
-.drivers-screen, .customers-screen, .rides-screen, .logs-screen {
+.drivers-screen, .customers-screen, .rides-screen, .logs-screen, .payments-audit-screen {
   animation: fadeIn 0.3s;
 }
 
@@ -240,6 +240,54 @@ body {
   border: 1px solid #444444;
   border-radius: 4px;
   cursor: pointer;
+}
+
+/* Payments Audit */
+.audit-table {
+  margin-top: 1rem;
+  background: #2a2a2a;
+  border: 1px solid #444444;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.audit-header, .audit-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr 2fr 1.5fr 1.5fr;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  align-items: center;
+}
+
+.audit-header {
+  background: #1f1f1f;
+  border-bottom: 1px solid #444444;
+  font-weight: 600;
+  color: #cccccc;
+}
+
+.audit-row {
+  border-bottom: 1px solid #333333;
+  font-size: 0.85rem;
+}
+
+.audit-row:last-child {
+  border-bottom: none;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.85);
+  word-break: break-all;
+}
+
+.flag {
+  color: #888888;
+}
+
+.flag.warning {
+  color: #f59e0b;
 }
 
 .filter-buttons button:hover {

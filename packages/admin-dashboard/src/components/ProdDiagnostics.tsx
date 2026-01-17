@@ -16,6 +16,9 @@ interface DiagnosticInfo {
 }
 
 export function ProdDiagnostics() {
+  if (!import.meta.env.DEV) {
+    return null;
+  }
   const [info, setInfo] = useState<DiagnosticInfo | null>(null);
   const [visible, setVisible] = useState(false);
 

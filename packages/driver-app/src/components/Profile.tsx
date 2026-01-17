@@ -229,7 +229,12 @@ export function Profile({ driverId, onboardingStatus, runtimeFlags }: ProfilePro
   };
 
   return (
-    <div className="driver-home" style={{ paddingBottom: '80px' }}>
+    <div className="driver-home" style={{ 
+      paddingTop: 'calc(16px + var(--sat))',
+      paddingBottom: 'calc(80px + var(--sab))',
+      paddingLeft: 'calc(16px + var(--sal))',
+      paddingRight: 'calc(16px + var(--sar))',
+    }}>
       <h2>👤 Driver Profile</h2>
       
       {/* Profile Photo Upload */}

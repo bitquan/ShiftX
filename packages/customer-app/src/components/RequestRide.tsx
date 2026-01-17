@@ -15,6 +15,7 @@ import { ServiceCard } from './ServiceCard';
 import { getBestEffortPosition } from '../utils/geolocation';
 import { RebookPayload } from '../types/rebook';
 import { RuntimeFlags } from '../utils/runtimeFlags';
+import { MapShell } from '../layout/MapShell';
 import 'leaflet/dist/leaflet.css';
 
 interface LatLng {
@@ -34,6 +35,8 @@ interface RequestRideProps {
   onRebookConsumed?: () => void;
   userPhotoURL?: string | null;
   runtimeFlags: RuntimeFlags | null;
+  onViewHistory?: () => void;
+  onViewWallet?: () => void;
 }
 
 function MapClickHandler({ 
@@ -58,7 +61,7 @@ function MapClickHandler({
   return null;
 }
 
-export function RequestRide({ onRideRequested, rebookPayload, onRebookConsumed, userPhotoURL, runtimeFlags }: RequestRideProps) {
+export function RequestRide({ onRideRequested, rebookPayload, onRebookConsumed, userPhotoURL, runtimeFlags, onViewHistory, onViewWallet }: RequestRideProps) {
   const { show } = useToast();
   const [loading, setLoading] = useState(false);
   const [pickup, setPickup] = useState<LatLng | null>(null);
@@ -460,9 +463,28 @@ export function RequestRide({ onRideRequested, rebookPayload, onRebookConsumed, 
   };
 
   return (
-    <div className="screen-container">
-      <div className="card">
-        <h2 style={{ marginBottom: '1.5rem' }}>Request a Ride</h2>
+    <MapShell
+      defaultSnap="mid"
+      map={
+        <SharedMap
+          pickup={pickup}
+          dropoff={dropoff}
+          center={mapCenter}
+          drivers={drivers.map(d => ({ id: d.id, location: d.location! })).filter(d => d.location)}
+          routeCoords={routeLatLngs}
+          shouldFit={true}
+          fitKey={routeKey}
+        >
+          <MapClickHandler 
+            activeField={activeField}
+            onSetPickup={handleMapSetPickup}
+            onSetDropoff={handleMapSetDropoff}
+          />
+        </SharedMap>
+      }
+      panel={
+    <div style={{ padding: '1.5rem' }}>
+      <h2 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Request a Ride</h2>
         
         {/* Use My Location Button */}
         <button
@@ -796,40 +818,27 @@ export function RequestRide({ onRideRequested, rebookPayload, onRebookConsumed, 
             </div>
           )}
 
-          {/* Map */}
-          <div style={{ 
-            height: '300px', 
-            borderRadius: '8px', 
-            overflow: 'hidden',
-            marginBottom: '1rem',
-            border: '1px solid rgba(255,255,255,0.1)'
-          }}>
-            <SharedMap
-              pickup={pickup}
-              dropoff={dropoff}
-              center={mapCenter}
-              drivers={drivers.map(d => ({ id: d.id, location: d.location! })).filter(d => d.location)}
-              routeCoords={routeLatLngs}
-              shouldFit={true}
-              fitKey={routeKey}
-            >
-              <MapClickHandler 
-                activeField={activeField}
-                onSetPickup={handleMapSetPickup}
-                onSetDropoff={handleMapSetDropoff}
-              />
-            </SharedMap>
-          </div>
-
           {/* Route Status */}
-          {pickup && dropoff && (
+          {pickup && dropoff && routeLoading && (
             <div style={{ 
               fontSize: '0.85rem', 
-              color: routeError ? 'rgba(255,100,100,0.8)' : 'rgba(255,255,255,0.5)', 
+              color: 'rgba(255,255,255,0.5)', 
               marginTop: '0.5rem',
+              marginBottom: '1rem',
               textAlign: 'center'
             }}>
-              {routeLoading ? 'Calculating route…' : routeError ? 'Route unavailable' : ''}
+              Calculating route…
+            </div>
+          )}
+          {pickup && dropoff && routeError && (
+            <div style={{ 
+              fontSize: '0.85rem', 
+              color: 'rgba(255,100,100,0.8)', 
+              marginTop: '0.5rem',
+              marginBottom: '1rem',
+              textAlign: 'center'
+            }}>
+              Route unavailable
             </div>
           )}
 
@@ -1123,8 +1132,49 @@ export function RequestRide({ onRideRequested, rebookPayload, onRebookConsumed, 
           >
             {loading ? (isScheduled ? 'Scheduling...' : 'Requesting...') : routeLoading ? 'Calculating route...' : !userPhotoURL ? 'Photo Required' : runtimeFlags?.disableNewRequests ? 'Disabled' : (isScheduled ? 'Schedule Ride' : 'Request Ride')}
           </button>
+
+          {/* Quick Actions */}
+          {(onViewHistory || onViewWallet) && (
+            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
+              {onViewHistory && (
+                <button
+                  onClick={onViewHistory}
+                  style={{
+                    flex: 1,
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: 'white',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  📋 History
+                </button>
+              )}
+              {onViewWallet && (
+                <button
+                  onClick={onViewWallet}
+                  style={{
+                    flex: 1,
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: 'white',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  💳 Wallet
+                </button>
+              )}
+            </div>
+          )}
         </form>
       </div>
-    </div>
+      }
+    />
   );
 }

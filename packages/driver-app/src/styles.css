@@ -1,4 +1,19 @@
 /* Base styles */
+:root {
+  /* iOS Safe Area Insets */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+html {
+  background-color: #05060a;
+  height: 100%;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -9,6 +24,11 @@ body {
   color: #e1e6ef;
   margin: 0;
   padding: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  position: fixed;
+  width: 100%;
 }
 
 /* Leaflet map dark theme */
@@ -28,7 +48,12 @@ body {
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available; /* iOS Safari fallback */
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Auth gate */
@@ -36,7 +61,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100%;
   background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
 }
 
@@ -67,19 +93,27 @@ body {
 
 /* Auth wrapper */
 .auth-wrapper {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  height: 100%;
 }
 
 .app-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding-top: calc(20px + var(--sat));
+  padding-bottom: 20px;
+  padding-left: calc(24px + var(--sal));
+  padding-right: calc(24px + var(--sar));
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.95);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
 }
 
 .app-header h1 {
@@ -97,6 +131,9 @@ body {
   max-width: 600px;
   margin: 0 auto;
   width: 100%;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Buttons */
@@ -541,8 +578,8 @@ button.primary-button:hover:not(:disabled) {
 /* Toast */
 .toast-container {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: calc(24px + var(--sab));
+  right: calc(24px + var(--sar));
   display: flex;
   flex-direction: column;
   gap: 12px;

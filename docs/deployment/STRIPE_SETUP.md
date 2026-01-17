@@ -38,6 +38,13 @@ cd functions
 echo "STRIPE_SECRET_KEY=sk_test_YOUR_SECRET_KEY" > .env
 ```
 
+**Connect + Test Mode (STRIPE_MODE=test):**
+- Set Secret Manager keys:
+   - `STRIPE_SECRET_KEY_TEST` for test mode
+   - `STRIPE_SECRET_KEY_LIVE` for live mode
+- Set `STRIPE_MODE=test` for test deployments (non-emulator).
+- Emulator always uses `.env.local` (`STRIPE_SECRET_KEY_TEST`).
+
 ### 3. Configure Customer App
 
 Create `.env.local` in `packages/customer-app/`:
@@ -172,6 +179,16 @@ https://dashboard.stripe.com/test/payments
 - Search by payment intent ID
 - View authorization/capture events
 
+### Connect Routing Verification
+
+When Connect routing is enabled (flag + pilot + active status), PaymentIntents are created as **destination charges**:
+- `transfer_data.destination = acct_...`
+- `application_fee_amount = platformFeeCents`
+- `on_behalf_of = acct_...`
+- `transfer_group = ride_<rideId>`
+
+If Connect routing was not attached at creation, a **fallback transfer** is created after capture using the ride’s `driverPayoutCents`.
+
 ### Common Issues
 
 **"No Stripe key found"**:
@@ -197,6 +214,7 @@ https://dashboard.stripe.com/test/payments
 - ✅ Client secret is single-use and ride-specific
 - ✅ Authorization requires customer authentication
 - ✅ Capture requires driver authentication + ride completion
+- ✅ Connect test/live keys are enforced by `STRIPE_MODE` and key prefix checks
 
 ---
 

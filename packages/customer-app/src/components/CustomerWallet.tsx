@@ -123,6 +123,8 @@ export function CustomerWallet() {
   const [defaultSummary, setDefaultSummary] = useState<any>(null);
   const [stripeNotConfigured, setStripeNotConfigured] = useState(false);
 
+  console.log('[CustomerWallet] Component mounted/rendered - showAddCard:', showAddCard, 'setupClientSecret:', setupClientSecret?.substring(0, 20) || 'null');
+
   // Listen to customer document for default payment method summary
   useEffect(() => {
     const user = auth.currentUser;
@@ -130,7 +132,11 @@ export function CustomerWallet() {
 
     const unsubscribe = onSnapshot(doc(db, 'customers', user.uid), (snap) => {
       if (snap.exists()) {
-        setDefaultSummary(snap.data().defaultPaymentMethodSummary || null);
+        const data = snap.data();
+        console.log('[CustomerWallet] Customer document:', data);
+        setDefaultSummary(data.defaultPaymentMethodSummary || null);
+      } else {
+        console.log('[CustomerWallet] No customer document found');
       }
     });
 
@@ -144,10 +150,11 @@ export function CustomerWallet() {
       const listFn = httpsCallable(functions, 'listPaymentMethods');
       const result = await listFn();
       const data = result.data as any;
+      console.log('[CustomerWallet] listPaymentMethods result:', data);
       setPaymentMethods(data.paymentMethods || []);
       setStripeNotConfigured(false);
     } catch (error: any) {
-      console.error('Failed to load payment methods:', error);
+      console.error('[CustomerWallet] Failed to load payment methods:', error);
       if (error.code === 'functions/failed-precondition') {
         setStripeNotConfigured(true);
       } else {
@@ -163,10 +170,12 @@ export function CustomerWallet() {
   }, []);
 
   const handleAddCard = async () => {
+    console.log('[CustomerWallet] handleAddCard called');
     try {
       const createSetupFn = httpsCallable(functions, 'createSetupIntent');
       const result = await createSetupFn();
       const data = result.data as any;
+      console.log('[CustomerWallet] createSetupIntent returned client_secret:', data.clientSecret?.substring(0, 30) + '...');
       setSetupClientSecret(data.clientSecret);
       setShowAddCard(true);
     } catch (error: any) {
@@ -391,8 +400,10 @@ export function CustomerWallet() {
                 <p>Loading...</p>
               </div>
             ) : (
-              <Elements stripe={stripePromise} options={{ clientSecret: setupClientSecret }}>
-                <SetupForm
+              <>
+                {console.log('[CustomerWallet] Rendering Elements with client_secret:', setupClientSecret?.substring(0, 30) + '...')}
+                <Elements stripe={stripePromise} options={{ clientSecret: setupClientSecret }}>
+                  <SetupForm
                   onSuccess={handleSetupSuccess}
                   onCancel={() => {
                     setShowAddCard(false);
@@ -400,6 +411,7 @@ export function CustomerWallet() {
                   }}
                 />
               </Elements>
+              </>
             )}
           </div>
         )}

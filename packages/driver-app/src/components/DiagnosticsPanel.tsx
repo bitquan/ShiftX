@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import React from 'react';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
@@ -12,6 +13,14 @@ interface DiagnosticsPanelProps {
 export function DiagnosticsPanel({ user }: DiagnosticsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  
+  // Load saved position from localStorage or use default
+  const savedPosition = localStorage.getItem('diagnostics-button-position');
+  const initialPosition = savedPosition ? JSON.parse(savedPosition) : { x: 16, y: 80 };
+  
+  const [position, setPosition] = useState(initialPosition);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const { show } = useToast();
 
   // Only show in development
@@ -41,6 +50,42 @@ export function DiagnosticsPanel({ user }: DiagnosticsPanelProps) {
     show(`Copied ${label}`, 'info');
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (isOpen) return; // Don't drag when panel is open
+    setIsDragging(true);
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setDragOffset({
+      x: window.innerWidth - e.clientX - rect.width,
+      y: window.innerHeight - e.clientY - rect.height
+    });
+  };
+
+  React.useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newPosition = {
+        x: window.innerWidth - e.clientX - dragOffset.x,
+        y: window.innerHeight - e.clientY - dragOffset.y
+      };
+      setPosition(newPosition);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      // Save position to localStorage when drag ends
+      localStorage.setItem('diagnostics-button-position', JSON.stringify(position));
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset, position]);
+
   const { app } = getInitializedClient();
   const auth = getAuth(app);
   const projectId = auth.app.options.projectId || 'unknown';
@@ -56,13 +101,14 @@ export function DiagnosticsPanel({ user }: DiagnosticsPanelProps) {
   return (
     <div style={{
       position: 'fixed',
-      bottom: 'calc(80px + var(--sab))',
-      right: 'calc(16px + var(--sar))',
+      bottom: `${position.y}px`,
+      right: `${position.x}px`,
       zIndex: 9999,
     }}>
       {/* Toggle Button */}
       <button
         onClick={handleToggle}
+        onMouseDown={handleMouseDown}
         style={{
           padding: '8px 12px',
           backgroundColor: 'rgba(96,165,250,0.9)',
@@ -71,8 +117,9 @@ export function DiagnosticsPanel({ user }: DiagnosticsPanelProps) {
           borderRadius: '6px',
           fontSize: '0.85rem',
           fontWeight: '600',
-          cursor: 'pointer',
+          cursor: isDragging ? 'grabbing' : (isOpen ? 'pointer' : 'grab'),
           boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          userSelect: 'none',
         }}
       >
         {isOpen ? '✕ Close Diagnostics' : '🔧 Diagnostics'}

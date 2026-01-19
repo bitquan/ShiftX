@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',  // Listen on all interfaces (required for iOS simulator)
-    port: 5173,
+    port: 5173,  // Customer app
     strictPort: false,
   },
   build: {

@@ -1,7 +1,7 @@
 # ShiftX - Project Status & Documentation Update
 
-**Date:** January 14, 2026  
-**Status:** Production Deployed ✅
+**Date:** January 19, 2026  
+**Status:** Production Deployed ✅ | Driver UI Phase 2 Complete ✅
 
 ---
 
@@ -95,7 +95,17 @@ shiftx/
 - Ride history and receipts
 - CORS configured for all hosting domains
 
-### Recent Updates (Jan 13-14, 2026) ✅
+### Recent Updates (Jan 13-19, 2026) ✅
+
+#### Jan 19, 2026: Driver UI Phase 2 Complete ✅
+- **2-snap BottomSheet:** Draggable bottom sheet with collapsed (160px) and expanded (~62% viewport) states
+- **State Mapping System:** Pure function `mapDriverUiState()` maps driver state to UI presentation
+- **Collapsed/Expanded Views:** Separate components for compact summary and full details
+- **iOS-Safe Scrolling:** Comprehensive scroll fix using flex layout + touch-action API
+- **Camera Mode Toggle:** UI placeholder for Phase 3 navigation (Follow/Overview modes)
+- **Port Resolution:** Driver 5174, Customer 5173, Admin 5175
+- **Diagnostics Panel:** Draggable with localStorage persistence
+- **Full Documentation:** See [docs/driver-app/DRIVER_UI_PHASE2.md](driver-app/DRIVER_UI_PHASE2.md)
 
 #### PR4: Stripe Payment State Machine ✅
 - **Payment gating:** Start ride blocked until payment authorized

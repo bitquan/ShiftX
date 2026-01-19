@@ -5,7 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 5174,
+    port: 5174,  // Driver app
+    strictPort: false,
   },
   resolve: {
     dedupe: ['firebase', 'firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/functions'],

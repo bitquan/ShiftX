@@ -1,0 +1,108 @@
+/* MapShell - Full-screen map with floating UI (Driver App) */
+
+.map-shell {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  width: 100vw;
+  background: #000;
+  overflow: hidden;
+}
+
+/* Map layer - fills entire screen, behind everything */
+.map-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #000;
+  pointer-events: auto;
+}
+
+.map-layer > * {
+  width: 100%;
+  height: 100%;
+}
+
+/* IMPORTANT: Leaflet needs explicit height */
+.map-layer .leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: #000;
+}
+
+/* UI overlay - floats above map, no pointer events by default */
+.ui-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top left corner - menu button */
+.ui-top-left {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: calc(env(safe-area-inset-left) + 12px);
+  pointer-events: auto;
+  z-index: 200;
+}
+
+/* Top center - env badge */
+.ui-top-center {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  z-index: 200;
+}
+
+/* Top right corner - badges, diagnostics */
+.ui-top-right {
+  position: absolute;
+  bottom: calc(200px + env(safe-area-inset-bottom)); /* Position above bottom sheet */
+  right: calc(env(safe-area-inset-right) + 12px);
+  pointer-events: auto;
+  z-index: 50; /* Lower than bottom sheet to avoid overlap */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+/* Right side vertical stack - locate/zoom controls */
+.ui-right-stack {
+  position: absolute;
+  top: 50%;
+  right: calc(env(safe-area-inset-right) + 12px);
+  transform: translateY(-50%);
+  pointer-events: auto;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Bottom panel - fixed status card */
+.ui-bottom-panel {
+  position: absolute;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  left: calc(env(safe-area-inset-left) + 12px);
+  right: calc(env(safe-area-inset-right) + 12px);
+  pointer-events: auto;
+  z-index: 100;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+/* Bottom navigation */
+.ui-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 150;
+  pointer-events: auto;
+}

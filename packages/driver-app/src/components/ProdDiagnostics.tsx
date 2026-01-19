@@ -22,12 +22,22 @@ export function ProdDiagnostics() {
   }
   const [info, setInfo] = useState<DiagnosticInfo | null>(null);
   const [visible, setVisible] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     // Only show if explicitly enabled via URL param
     const params = new URLSearchParams(window.location.search);
     const showDebug = params.get('debug') === '1';
     setVisible(showDebug);
+    
+    // Initialize position to bottom-right
+    if (showDebug) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      setPosition({ x: vw - 420, y: vh - 280 }); // Offset from bottom-right
+    }
 
     if (showDebug) {
       const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -62,6 +72,37 @@ export function ProdDiagnostics() {
     }
   }, []);
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    });
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setPosition({
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
   if (!visible || !info) return null;
 
   const hasIssues = 
@@ -71,21 +112,26 @@ export function ProdDiagnostics() {
     (info.isEmulator && !info.isDev);
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 'calc(48px + var(--sat))',
-      right: 'calc(12px + var(--sar))',
-      background: hasIssues ? 'rgba(220, 38, 38, 0.95)' : 'rgba(34, 34, 34, 0.95)',
-      color: '#fff',
-      padding: '12px 16px',
-      borderRadius: '8px',
-      fontSize: '11px',
-      fontFamily: 'monospace',
-      zIndex: 10000,
-      maxWidth: '400px',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-      border: hasIssues ? '2px solid #dc2626' : '1px solid rgba(255,255,255,0.2)'
-    }}>
+    <div 
+      style={{
+        position: 'fixed',
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        background: hasIssues ? 'rgba(220, 38, 38, 0.95)' : 'rgba(34, 34, 34, 0.95)',
+        color: '#fff',
+        padding: '12px 16px',
+        borderRadius: '8px',
+        fontSize: '11px',
+        fontFamily: 'monospace',
+        zIndex: 10000,
+        maxWidth: '400px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        border: hasIssues ? '2px solid #dc2626' : '1px solid rgba(255,255,255,0.2)',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        userSelect: 'none'
+      }}
+      onMouseDown={handleMouseDown}
+    >
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -96,7 +142,10 @@ export function ProdDiagnostics() {
       }}>
         <strong>{hasIssues ? '⚠️ Config Issues' : '✓ Production Diagnostics'}</strong>
         <button 
-          onClick={() => setVisible(false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setVisible(false);
+          }}
           style={{
             background: 'transparent',
             border: 'none',

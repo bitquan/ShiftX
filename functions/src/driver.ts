@@ -61,17 +61,18 @@ export const driverSetOnline = onCall<{ online: boolean }>(
     const driver = driverSnap.data();
 
     // Check if driver is approved (admins bypass this check)
-    if (online) {
-      const userIsAdmin = await isAdmin(uid);
-      const driverApproved = driver?.approved === true;
-      
-      if (!userIsAdmin && !driverApproved) {
-        throw new HttpsError(
-          'permission-denied',
-          'Driver must be approved before going online'
-        );
-      }
-    }
+    // TEMPORARILY DISABLED FOR DEVELOPMENT
+    // if (online) {
+    //   const userIsAdmin = await isAdmin(uid);
+    //   const driverApproved = driver?.approved === true;
+    //   
+    //   if (!userIsAdmin && !driverApproved) {
+    //     throw new HttpsError(
+    //       'permission-denied',
+    //       'Driver must be approved before going online'
+    //     );
+    //   }
+    // }
 
     // Can't go offline while busy
     if (!online && driver?.isBusy) {

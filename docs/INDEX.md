@@ -58,8 +58,10 @@
 - [QUICKSTART](customer-app/QUICKSTART.md) - Quick start guide
 
 ### 🚗 Driver App (`/driver-app/`)
+- [DRIVER_UI_PHASE2](driver-app/DRIVER_UI_PHASE2.md) - **Phase 2: 2-snap BottomSheet + iOS scroll fix** ✨
 - [DRIVER-APP-WORKFLOW](driver-app/DRIVER-APP-WORKFLOW.md) - Driver app user flow
 - [ROUTING](driver-app/ROUTING.md) - Routing implementation
+- [README](driver-app/README.md) - Driver app overview
 
 ---
 

@@ -32,20 +32,20 @@ export function BottomSheet({
   const [currentSnap, setCurrentSnap] = useState<SnapPoint>(defaultSnap);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
-  const [dragStartTranslateY, setDragStartTranslateY] = useState(0);
+  const [dragStartHeight, setDragStartHeight] = useState(0);
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  // Reset position when defaultSnap changes
+  // Reset height when defaultSnap changes
   useEffect(() => {
     setCurrentSnap(defaultSnap);
-    updateSheetPosition(defaultSnap);
+    updateSheetHeight(defaultSnap);
   }, [defaultSnap]);
 
   // Handle visualViewport resize (keyboard open/close, orientation change)
   useEffect(() => {
     const handleResize = () => {
       if (!isDragging) {
-        updateSheetPosition(currentSnap);
+        updateSheetHeight(currentSnap);
       }
     };
 
@@ -60,15 +60,14 @@ export function BottomSheet({
     };
   }, [currentSnap, isDragging]);
 
-  const updateSheetPosition = (snap: SnapPoint) => {
+  // Height-based positioning (no transform) - fixes iOS scroll
+  const updateSheetHeight = (snap: SnapPoint) => {
     if (!sheetRef.current) return;
     
     const heights = getSnapHeights();
-    const vvh = window.visualViewport?.height ?? window.innerHeight;
     const panelHeight = heights[snap];
-    const translateY = vvh - panelHeight;
     
-    sheetRef.current.style.transform = `translateY(${translateY}px)`;
+    sheetRef.current.style.height = `${panelHeight}px`;
   };
 
   const handleDragStart = (clientY: number) => {
@@ -79,9 +78,8 @@ export function BottomSheet({
     document.documentElement.classList.add('dragging-sheet');
     
     if (sheetRef.current) {
-      const transform = window.getComputedStyle(sheetRef.current).transform;
-      const matrix = new DOMMatrix(transform);
-      setDragStartTranslateY(matrix.m42); // Get current translateY
+      const currentHeight = parseInt(sheetRef.current.style.height || '160', 10);
+      setDragStartHeight(currentHeight);
     }
   };
 
@@ -89,16 +87,16 @@ export function BottomSheet({
     if (!isDragging || !sheetRef.current) return;
 
     const deltaY = clientY - dragStartY;
-    const newTranslateY = dragStartTranslateY + deltaY;
+    // Dragging up (negative deltaY) should increase height
+    const newHeight = dragStartHeight - deltaY;
     
-    // Constrain dragging within bounds
-    const vvh = window.visualViewport?.height ?? window.innerHeight;
+    // Constrain within bounds
     const heights = getSnapHeights();
-    const minTranslateY = vvh - heights.expanded;
-    const maxTranslateY = vvh - heights.collapsed;
+    const minHeight = heights.collapsed;
+    const maxHeight = heights.expanded;
     
-    const constrainedY = Math.max(minTranslateY, Math.min(maxTranslateY, newTranslateY));
-    sheetRef.current.style.transform = `translateY(${constrainedY}px)`;
+    const constrainedHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
+    sheetRef.current.style.height = `${constrainedHeight}px`;
   };
 
   const handleDragEnd = () => {
@@ -107,20 +105,16 @@ export function BottomSheet({
     // Re-enable map pointer events
     document.documentElement.classList.remove('dragging-sheet');
     
-    const transform = window.getComputedStyle(sheetRef.current).transform;
-    const matrix = new DOMMatrix(transform);
-    const currentTranslateY = matrix.m42;
-    
-    const vvh = window.visualViewport?.height ?? window.innerHeight;
+    const currentHeight = parseInt(sheetRef.current.style.height || '160', 10);
     const heights = getSnapHeights();
-    const midpoint = vvh - (heights.collapsed + heights.expanded) / 2;
+    const midpoint = (heights.collapsed + heights.expanded) / 2;
     
-    // Snap decision: above midpoint -> expand, below -> collapse
-    const newSnap: SnapPoint = currentTranslateY < midpoint ? 'expanded' : 'collapsed';
+    // Snap decision: above midpoint height -> expand, below -> collapse
+    const newSnap: SnapPoint = currentHeight > midpoint ? 'expanded' : 'collapsed';
     
     setCurrentSnap(newSnap);
     setIsDragging(false);
-    updateSheetPosition(newSnap);
+    updateSheetHeight(newSnap);
     
     if (onSnapChange && newSnap !== currentSnap) {
       onSnapChange(newSnap);
@@ -136,6 +130,29 @@ export function BottomSheet({
     }
   };
 
+  // Hard drag reset - prevents stuck drag state
+  const resetDrag = () => {
+    if (!isDragging) return;
+    
+    setIsDragging(false);
+    document.documentElement.classList.remove('dragging-sheet');
+    
+    // Snap to nearest point
+    if (sheetRef.current) {
+      const currentHeight = parseInt(sheetRef.current.style.height || '160', 10);
+      const heights = getSnapHeights();
+      const midpoint = (heights.collapsed + heights.expanded) / 2;
+      const newSnap: SnapPoint = currentHeight > midpoint ? 'expanded' : 'collapsed';
+      
+      setCurrentSnap(newSnap);
+      updateSheetHeight(newSnap);
+      
+      if (onSnapChange && newSnap !== currentSnap) {
+        onSnapChange(newSnap);
+      }
+    }
+  };
+
   useEffect(() => {
     if (!isDragging) return;
 
@@ -148,14 +165,21 @@ export function BottomSheet({
       handleDragEnd();
     };
 
+    // Add hard reset listeners to prevent stuck drag
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('pointerup', resetDrag);
+    window.addEventListener('pointercancel', resetDrag);
+    window.addEventListener('blur', resetDrag);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('pointerup', resetDrag);
+      window.removeEventListener('pointercancel', resetDrag);
+      window.removeEventListener('blur', resetDrag);
     };
-  }, [isDragging, dragStartY, dragStartTranslateY, currentSnap]);
+  }, [isDragging, dragStartY, dragStartHeight, currentSnap]);
 
   // Touch events (only on handle)
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -182,12 +206,33 @@ export function BottomSheet({
     }
   };
 
+  // Add touch reset listeners
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleTouchEndWindow = () => {
+      resetDrag();
+    };
+
+    const handleTouchCancelWindow = () => {
+      resetDrag();
+    };
+
+    window.addEventListener('touchend', handleTouchEndWindow);
+    window.addEventListener('touchcancel', handleTouchCancelWindow);
+
+    return () => {
+      window.removeEventListener('touchend', handleTouchEndWindow);
+      window.removeEventListener('touchcancel', handleTouchCancelWindow);
+    };
+  }, [isDragging, currentSnap]);
+
   return (
     <div
       ref={sheetRef}
       className={`driver-bottom-sheet ${currentSnap}`}
       style={{
-        transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: isDragging ? 'none' : 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       {/* Drag handle */}

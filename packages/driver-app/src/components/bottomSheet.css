@@ -1,11 +1,11 @@
-/* Driver Bottom Sheet Styles */
+/* Driver Bottom Sheet Styles - Height-based (no transform) */
 
 .driver-bottom-sheet {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 100vh; /* Full viewport height */
+  /* Height controlled by JS inline style - no fixed height here */
   z-index: 100;
   background: rgba(26, 26, 26, 0.98);
   backdrop-filter: blur(24px);
@@ -19,7 +19,7 @@
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  will-change: transform;
+  /* Remove will-change: transform since we're not using transforms */
 }
 
 /* Disable map interactions while dragging */

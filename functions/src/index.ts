@@ -48,6 +48,9 @@ export * from './wallet';
 // Export Stripe Connect functions
 export * from './connect';
 
+// Export error logging functions
+export * from './errorLog';
+
 // Export Stripe webhooks
 export * from './webhooks/stripe';
 

@@ -1,8 +1,11 @@
 import React, { Component, ReactNode } from 'react';
+import { functions } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  source?: 'driver-app' | 'customer-app' | 'admin-dashboard';
 }
 
 interface State {
@@ -22,6 +25,28 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    
+    // Log error to Cloud Functions
+    this.logError(error, errorInfo);
+  }
+
+  async logError(error: Error, errorInfo: React.ErrorInfo) {
+    try {
+      const logError = httpsCallable(functions, 'logError');
+      await logError({
+        error: error.name,
+        message: error.message,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack,
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        severity: 'high',
+        source: this.props.source || 'driver-app',
+        environment: import.meta.env.MODE,
+      });
+    } catch (logErr) {
+      console.error('Failed to log error to Cloud Functions:', logErr);
+    }
   }
 
   render() {

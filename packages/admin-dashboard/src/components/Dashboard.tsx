@@ -4,13 +4,14 @@ import { Drivers } from './Drivers';
 import { Customers } from './Customers';
 import { Rides } from './Rides';
 import { AdminLogs } from './AdminLogs';
+import { ErrorLogs } from './ErrorLogs';
 import { RuntimeFlags } from './RuntimeFlags';
 import { Reports } from './Reports';
 import { PaymentsAudit } from './PaymentsAudit';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 
-type Screen = 'overview' | 'drivers' | 'customers' | 'rides' | 'payments-audit' | 'logs' | 'runtime-flags' | 'reports';
+type Screen = 'overview' | 'drivers' | 'customers' | 'rides' | 'payments-audit' | 'admin-logs' | 'error-logs' | 'runtime-flags' | 'reports';
 
 export function Dashboard() {
   const [activeScreen, setActiveScreen] = useState<Screen>('overview');
@@ -60,10 +61,16 @@ export function Dashboard() {
             💳 Payments Audit
           </button>
           <button
-            className={activeScreen === 'logs' ? 'active' : ''}
-            onClick={() => setActiveScreen('logs')}
+            className={activeScreen === 'admin-logs' ? 'active' : ''}
+            onClick={() => setActiveScreen('admin-logs')}
           >
-            📝 Logs
+            📝 Admin Logs
+          </button>
+          <button
+            className={activeScreen === 'error-logs' ? 'active' : ''}
+            onClick={() => setActiveScreen('error-logs')}
+          >
+            🐛 Error Logs
           </button>
           <button
             className={activeScreen === 'runtime-flags' ? 'active' : ''}
@@ -90,7 +97,8 @@ export function Dashboard() {
         {activeScreen === 'customers' && <Customers />}
         {activeScreen === 'rides' && <Rides />}
         {activeScreen === 'payments-audit' && <PaymentsAudit />}
-        {activeScreen === 'logs' && <AdminLogs />}
+        {activeScreen === 'admin-logs' && <AdminLogs />}
+        {activeScreen === 'error-logs' && <ErrorLogs />}
         {activeScreen === 'runtime-flags' && <RuntimeFlags />}
         {activeScreen === 'reports' && <Reports />}
       </div>

@@ -1,473 +1,526 @@
-# Customer App MVP - Complete Implementation Summary
+# ShiftX Customer App
 
-**Status**: ✅ COMPLETE & READY FOR TESTING
-**Date**: December 31, 2025
-**Build**: ✓ No TypeScript errors, builds successfully
-**Firebase Setup**: ✓ Single instance verified
-**Test Coverage**: 60+ manual test cases documented
+**Status:** Production Ready (UI Enhanced - Jan 2026)  
+**Version:** Phase 2 (Sync with Driver UI Quality)  
+**Tech Stack:** React 18 + TypeScript + Vite + Firebase + Leaflet + Stripe
 
 ---
 
-## Executive Summary
+## Overview
 
-The Customer App MVP has been fully implemented with all requested features:
+The ShiftX Customer App is a modern, map-based ride-hailing application for requesting and tracking rides in real-time. Built with React and TypeScript, it provides a seamless booking experience with live driver tracking, payment integration, and ride history.
 
-1. ✅ Email/password authentication with user document initialization
-2. ✅ Request Ride screen with coordinate entry and callable integration
-3. ✅ Real-time Ride Status screen with visual timeline
-4. ✅ Cancel Ride functionality with state validation and error handling
-5. ✅ Single Firebase instance (hoisted to workspace root)
-6. ✅ Emulator mode with proper configuration
-7. ✅ Comprehensive documentation and test coverage
+### Key Features
 
-### Key Metrics
-- **Lines of Code**: ~1000 (excluding dependencies)
-- **Components**: 6 (App, AuthGate, RequestRide, RideStatus, Toast + main.tsx)
-- **TypeScript Coverage**: 100%
-- **Build Time**: <800ms
-- **Bundle Size**: 784KB uncompressed, 202KB gzipped
-- **Test Cases**: 60+ documented manual tests
+✅ **Real-time Ride Booking** — Map-based pickup/dropoff selection with address search  
+✅ **Live Driver Tracking** — Real-time driver location and ETA updates  
+✅ **Payment Integration** — Stripe payment methods and receipt generation  
+✅ **Ride History** — Complete trip history with details and receipts  
+✅ **Saved Places** — Quick access to home, work, and favorite locations  
+✅ **Preferred Drivers** — Request rides from specific drivers  
+✅ **Multiple Service Classes** — ShiftX, Shift LX, Shift Black  
+✅ **Fare Estimates** — Real-time pricing before booking  
+✅ **Push Notifications** — Ride status updates and driver messages  
+
+### Recent Improvements (Jan 2026)
+
+- ✨ Enhanced CSS design system with semantic colors
+- ✨ Improved scrollbar visibility in bottom sheet
+- ✨ Added card variants for customer info, payment warnings
+- ✨ Consistent spacing and typography using CSS variables
+- ✨ Status badges and avatar styles
+- ✨ Secondary and outline button variants
 
 ---
 
-## Architecture Overview
+## Architecture
+
+### Component Structure
 
 ```
-┌─────────────────────────────────────────────┐
-│           Customer App MVP                   │
-│          (React + TypeScript)                │
-├─────────────────────────────────────────────┤
-│                                              │
-│  AuthGate         RequestRide      RideStatus  │
-│  (Sign in/up)     (Ride form)     (Timeline)  │
-│                                              │
-│                   Toast System               │
-│              (Notifications)                 │
-│                                              │
-├──────────────────────┬──────────────────────┤
-│                      │                       │
-│  Firebase Auth       │    Firestore         │
-│  (Emulator)          │    (Emulator)        │
-│                      │                       │
-│  users/{uid}         │  rides/{rideId}      │
-│  customers/{uid}     │  (Real-time listener)│
-│                      │                       │
-└──────────────────────┴──────────────────────┘
-                       ▲
-                       │
-               @shiftx/driver-client
-               (Callables: tripRequest, tripCancel)
+MapShell (Full-screen layout)
+├── Map Layer (Leaflet + route visualization)
+├── UI Overlays
+│   ├── FloatingTopBar (back button, menu)
+│   ├── EnvironmentBadge (top-right)
+│   └── DiagnosticsPanel (bottom-right)
+└── BottomSheet (draggable panel)
+    ├── RequestRide (booking form)
+    ├── RideStatus (active ride tracking)
+    ├── RideHistory (past trips)
+    ├── CustomerWallet (payment methods)
+    └── Profile (user settings)
+```
+
+### State Management
+
+- **Local State** — React hooks (useState, useEffect)
+- **Firebase Real-time** — Firestore listeners for ride updates
+- **Navigation State** — Component-based navigation (request-ride, ride-status, etc.)
+
+### Data Flow
+
+```
+User Action → Request Ride Form → Cloud Function (tripRequest)
+                                         ↓
+                                   Firestore writes
+                                         ↓
+                              Real-time listener updates
+                                         ↓
+                              RideStatus UI updates
 ```
 
 ---
 
-## What Was Built
+## Development Setup
 
-### 1. Authentication System
+### Prerequisites
 
-**File**: [src/components/AuthGate.tsx](src/components/AuthGate.tsx)
+- Node.js 20+
+- npm 10+
+- Firebase project with Firestore and Functions
+- Stripe account (for payment testing)
 
-- Email/password sign up form
-- Email/password sign in form
-- Auth state management
-- Error handling for common cases
-- Protected app content (only shown when signed in)
+### Installation
 
-**Key Features**:
-- Form toggle between sign up/in modes
-- Email validation
-- Password strength feedback (ready for enhancement)
-- Specific error messages (user not found, email in use, etc.)
-- Sign out button in app header
+```bash
+# From repository root
+npm install
 
-**User Document Creation** ([src/App.tsx#L53-L85](src/App.tsx#L53-L85)):
+# Install customer-app dependencies
+cd packages/customer-app
+npm install
+```
+
+### Environment Configuration
+
+Create a `.env` file in `packages/customer-app/`:
+
+```env
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
+
+# Stripe Configuration
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_key
+
+# Emulator Mode (optional for local dev)
+VITE_USE_EMULATOR=true
+VITE_FIRESTORE_EMULATOR_HOST=localhost
+VITE_FIRESTORE_EMULATOR_PORT=8081
+VITE_FUNCTIONS_EMULATOR_HOST=localhost
+VITE_FUNCTIONS_EMULATOR_PORT=5002
+VITE_AUTH_EMULATOR_URL=http://localhost:9099
+
+# Optional: Mapbox for geocoding
+VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_token
+```
+
+### Development Server
+
+```bash
+npm run dev
+```
+
+Opens at `http://localhost:5173`
+
+### Build
+
+```bash
+npm run build
+```
+
+Output: `dist/` directory
+
+---
+
+## Key Components
+
+### RequestRide.tsx
+
+Main booking interface with map selection and service options.
+
+**Features:**
+- Address autocomplete with geocoding
+- Map-based pickup/dropoff selection
+- Service class selector (ShiftX, LX, Black)
+- Preferred driver selection
+- Fare estimate display
+- Payment method selector
+- Booking confirmation
+
+**Enhanced Styling:**
+- Info cards with semantic colors
+- Section headers with consistent typography
+- Card-based layout with proper spacing
+- Responsive button styles
+
+### RideStatus.tsx
+
+Real-time ride tracking and status display.
+
+**Features:**
+- Visual timeline of ride states
+- Driver info (name, photo, rating, vehicle)
+- Real-time driver location on map
+- ETA countdown
+- Cancel ride (in early states)
+- Trip route visualization
+- Customer support access
+
+**Status States:**
+- `requested` — Searching for driver
+- `dispatching` — Driver being notified
+- `offered` — Waiting for driver acceptance
+- `accepted` — Driver on the way to pickup
+- `started` — Driver at pickup location
+- `in_progress` — Ride in progress
+- `completed` — Trip finished
+
+### AddressAutocomplete.tsx
+
+Smart address search with geocoding.
+
+**Features:**
+- Mapbox/Google Places integration
+- Recent searches
+- Saved places (home, work)
+- Coordinates fallback for manual entry
+- Debounced search queries
+
+### CustomerWallet.tsx
+
+Payment method management.
+
+**Features:**
+- Add/remove payment methods
+- Set default payment method
+- View payment history
+- Stripe integration
+
+### RideHistory.tsx
+
+Past trips list with details.
+
+**Features:**
+- Chronological trip list
+- Trip details (date, route, fare)
+- Receipt download
+- Rebook previous trips
+- Driver rating
+
+---
+
+## Styling System
+
+The customer app now uses a comprehensive CSS design system matching the driver app quality.
+
+### CSS Variables
+
+```css
+/* Spacing Scale */
+--spacing-xs: 0.5rem;    /* 8px */
+--spacing-sm: 0.75rem;   /* 12px */
+--spacing-md: 1rem;      /* 16px */
+--spacing-lg: 1.25rem;   /* 20px */
+--spacing-xl: 1.5rem;    /* 24px */
+--spacing-2xl: 2rem;     /* 32px */
+
+/* Typography */
+--text-xs: 0.75rem;      /* 12px */
+--text-sm: 0.875rem;     /* 14px */
+--text-base: 1rem;       /* 16px */
+--text-lg: 1.125rem;     /* 18px */
+--text-xl: 1.25rem;      /* 20px */
+
+/* Semantic Colors */
+--color-customer-primary: #60a5fa;      /* Blue for customer info */
+--color-driver-primary: #10b981;        /* Green for driver/ready */
+--color-payment-warning: #ffb703;       /* Yellow/orange for payment */
+--color-action-primary: #fb8b24;        /* Primary actions */
+--color-error: #ef4444;                 /* Errors */
+
+/* Card Backgrounds */
+--card-bg: rgba(26, 26, 26, 0.98);
+--card-bg-subtle: rgba(255, 255, 255, 0.05);
+--card-border: rgba(255, 255, 255, 0.1);
+--card-padding: 1.5rem;  /* 24px */
+```
+
+### Card Components
+
+```tsx
+// Customer info card (blue tint)
+<div className="info-card info-card-customer">
+  <div className="section-header">Customer Details</div>
+  <div className="row-md">
+    <img src={photo} className="avatar" alt="Customer" />
+    <div>Name: John Doe</div>
+  </div>
+</div>
+
+// Payment warning (yellow tint)
+<div className="info-card info-card-payment">
+  <div className="section-header">Payment Notice</div>
+  <p>Please update your payment method</p>
+</div>
+
+// Success state (green tint)
+<div className="info-card info-card-success">
+  <div className="section-header">Ride Complete</div>
+  <p>Thank you for riding with ShiftX!</p>
+</div>
+```
+
+### Button Styles
+
+```tsx
+// Primary action (gradient)
+<button className="button-primary">Request Ride</button>
+
+// Secondary action
+<button className="button-secondary">View History</button>
+
+// Outline style (blue)
+<button className="button-outline-blue">Add Payment Method</button>
+
+// Danger action (red)
+<button className="button-danger">Cancel Ride</button>
+```
+
+### Spacing Helpers
+
+```tsx
+// Vertical stack with small gaps
+<div className="stack-sm">
+  <div>Item 1</div>
+  <div>Item 2</div>
+</div>
+
+// Horizontal row with medium gaps
+<div className="row-md">
+  <span>Label:</span>
+  <span>Value</span>
+</div>
+```
+
+---
+
+## Testing
+
+### Manual Testing Checklist
+
+**Authentication:**
+- [ ] Sign up with new email
+- [ ] Sign in with existing account
+- [ ] Sign out
+
+**Ride Booking:**
+- [ ] Search for pickup location
+- [ ] Search for dropoff location
+- [ ] Select service class
+- [ ] View fare estimate
+- [ ] Add preferred driver (optional)
+- [ ] Confirm booking
+- [ ] Verify ride appears in Firestore
+
+**Ride Tracking:**
+- [ ] View real-time ride status
+- [ ] See driver info when assigned
+- [ ] Track driver location on map
+- [ ] View ETA updates
+- [ ] Cancel ride (early states only)
+- [ ] View completed ride details
+
+**Wallet & Payments:**
+- [ ] Add payment method
+- [ ] Set default payment method
+- [ ] Remove payment method
+- [ ] View payment history
+
+**Ride History:**
+- [ ] View past rides
+- [ ] View ride details
+- [ ] Rebook previous ride
+- [ ] Rate driver
+
+### Emulator Testing
+
+```bash
+# Terminal 1: Start Firebase emulators
+cd ../../  # repo root
+firebase emulators:start
+
+# Terminal 2: Start customer app
+cd packages/customer-app
+npm run dev
+```
+
+Visit `http://localhost:5173`
+
+---
+
+## Firebase Integration
+
+### Collections Used
+
 ```typescript
-// Creates on first login:
-users/{uid}: {
-  email: "user@example.com",
-  role: "customer",
-  createdAtMs: 1234567890
-}
+// User document
+users/{uid}
+  - email: string
+  - role: 'customer'
+  - photoURL: string (optional)
+  - createdAtMs: number
 
-customers/{uid}: {
-  onboardingStatus: "active",
-  createdAtMs: 1234567890,
-  updatedAtMs: 1234567890
-}
+// Customer document
+customers/{uid}
+  - onboardingStatus: 'pending' | 'active' | 'suspended'
+  - createdAtMs: number
+  - updatedAtMs: number
+  - savedPlaces: { home, work, favorites }
+  - paymentMethods: array
+
+// Ride document
+rides/{rideId}
+  - status: 'requested' | 'dispatching' | 'offered' | 'accepted' | 'started' | 'in_progress' | 'completed' | 'cancelled'
+  - customerId: string
+  - driverId: string (when assigned)
+  - pickup: { lat, lng, address }
+  - dropoff: { lat, lng, address }
+  - fareCents: number
+  - serviceTier: 'shiftx' | 'shift_lx' | 'shift_black'
+  - createdAtMs: number
+  - acceptedAtMs: number (when accepted)
+  - startedAtMs: number (when started)
+  - completedAtMs: number (when completed)
 ```
 
-### 2. Request Ride Flow
+### Cloud Functions Called
 
-**File**: [src/components/RequestRide.tsx](src/components/RequestRide.tsx)
-
-**Form Fields**:
-- Pickup Latitude (required)
-- Pickup Longitude (required)
-- Dropoff Latitude (required)
-- Dropoff Longitude (required)
-- Price in cents (optional)
-- Metadata as JSON (optional)
-
-**Functionality**:
-- Full input validation
-- Coordinate validation (numeric, within bounds)
-- Calls `tripRequest(payload)` from @shiftx/driver-client
-- Stores returned `rideId` in localStorage
-- Auto-navigates to Ride Status screen
-- Success/error toast notifications
-
-**Example Payload**:
 ```typescript
-{
+// Request a ride
+const result = await tripRequest({
   pickup: { lat: 40.7128, lng: -74.0060 },
   dropoff: { lat: 40.7580, lng: -73.9855 },
-  priceCents: 2500,
-  metadata: { paymentMethod: "card", notes: "Handle with care" }
-}
+  serviceTier: 'shiftx',
+  fareCents: 2500
+});
+
+// Cancel a ride
+await tripCancel({
+  rideId: 'ride_abc123',
+  reason: 'Customer cancelled'
+});
+
+// Create payment intent
+const { clientSecret } = await createPaymentIntent({
+  amountCents: 2500
+});
 ```
-
-### 3. Real-time Ride Status Display
-
-**File**: [src/components/RideStatus.tsx](src/components/RideStatus.tsx)
-
-**Visual Timeline** ([src/styles.css](src/styles.css#L168-L200)):
-- Shows all 7 ride states:
-  - requested (green)
-  - dispatching (blue)
-  - offered (orange)
-  - accepted (purple)
-  - started (red)
-  - in_progress (red)
-  - completed (green)
-- Current state highlighted with glow effect
-- Completed states shown in full opacity
-- Future states dimmed (opacity 0.3)
-- Color-coded status badge
-
-**Real-time Listener** ([src/components/RideStatus.tsx#L36-L60](src/components/RideStatus.tsx#L36-L60)):
-- Firestore `onSnapshot` listener on `rides/{rideId}`
-- Updates UI instantly (<500ms typical)
-- No page refresh required
-- Automatic cleanup on unmount
-
-**Details Grid**:
-- Current Status (with color badge)
-- Driver ID (when assigned)
-- Price (formatted as $)
-- Created At timestamp
-- Accepted At (when applicable)
-- Started At (when applicable)
-- Completed At (when applicable)
-- Cancelled At (if cancelled)
-- Pickup coordinates (4 decimals)
-- Dropoff coordinates (4 decimals)
-
-### 4. Cancel Ride Feature
-
-**File**: [src/components/RideStatus.tsx#L68-L103](src/components/RideStatus.tsx#L68-L103)
-
-**Logic**:
-- Button only visible in cancellable states: requested, dispatching, offered
-- Button hidden automatically when ride transitions to accepted/started/in_progress/completed
-- Warning message shown in non-cancellable states
-- Calls `tripCancel({ rideId, reason: "Customer cancelled" })`
-
-**Error Handling**:
-```typescript
-// Graceful error conversion:
-PERMISSION_DENIED → "No permission to cancel this ride"
-NOT_FOUND → "Ride not found"
-FAILED_PRECONDITION → "Ride cannot be cancelled in its current state"
-Generic errors → Display with user-friendly message
-```
-
-**User Experience**:
-- Loading state: "Cancelling..."
-- Success: Toast notification "Ride cancellation requested"
-- Failure: Error message displayed inline + toast
-- Button disabled during operation
-- Error state persists until next status update
-
-### 5. Firebase Setup & Deduplication
-
-**Problem Solved**: Multiple firebase instances causing "Service firestore is not available"
-
-**Solution Implemented**:
-1. Made firebase a peer dependency in @shiftx/driver-client
-2. Aligned all package versions to firebase@^11.10.0
-3. Removed nested node_modules to force hoisting
-4. Verified single instance: `npm ls firebase` shows one copy
-
-**Files Modified**:
-- [packages/driver-client/package.json](../driver-client/package.json#L13-L23)
-  ```json
-  "dependencies": {},
-  "peerDependencies": {
-    "firebase": "^11.10.0"
-  },
-  "devDependencies": {
-    "firebase": "^11.10.0"
-  }
-  ```
-- [packages/customer-app/package.json](package.json#L11-L24)
-  - Updated firebase to ^11.10.0
-
-**Verification**:
-```bash
-$ npm ls firebase
-└── firebase@11.10.0
-    └─┬ @shiftx/driver-client@0.1.0
-       └── firebase@11.10.0 (peer)
-```
-
-### 6. Emulator Integration
-
-**Configuration** ([src/App.tsx#L36-L48](src/App.tsx#L36-L48)):
-```typescript
-// Default emulator configuration
-const DEFAULT_EMULATOR_CONFIG = {
-  firestoreHost: 'localhost',
-  firestorePort: 8081,
-  functionsHost: 'localhost',
-  functionsPort: 5002,
-};
-
-// Auth emulator
-const authEmulatorUrl = `http://localhost:9099`;
-connectAuthEmulator(auth, authEmulatorUrl);
-
-// Firestore & Functions emulators
-connectFirestoreEmulator(firestore, 'localhost', 8081);
-connectFunctionsEmulator(functions, 'localhost', 5002);
-```
-
-**Working Emulators**:
-- ✅ Auth Emulator (user creation, authentication)
-- ✅ Firestore Emulator (document creation, real-time listeners)
-- ✅ Functions Emulator (callable functions)
 
 ---
 
-## Code Quality & Standards
+## Deployment
 
-### TypeScript Strict Mode
-- ✓ All files pass strict type checking
-- ✓ No `any` types (except where necessary for error handling)
-- ✓ Proper interface definitions
-- ✓ Generic types used appropriately
+### Web Deployment
 
-### Component Design
-- ✓ Single Responsibility Principle
-- ✓ Proper prop passing and composition
-- ✓ Hook usage (useState, useEffect, useContext)
-- ✓ Cleanup functions for listeners
-- ✓ Proper dependency arrays
-
-### Error Handling
-- ✓ Try-catch for async operations
-- ✓ User-friendly error messages
-- ✓ Firestore listener error callbacks
-- ✓ Network error resilience
-- ✓ Precondition error handling
-
-### Performance
-- ✓ Real-time updates <500ms latency
-- ✓ Efficient Firestore queries (single doc listener)
-- ✓ No unnecessary re-renders
-- ✓ Proper cleanup (unsubscribe listeners)
-- ✓ Memoized Firebase clients
-
-### Accessibility (Baseline)
-- ✓ Semantic HTML
-- ✓ High contrast colors
-- ✓ Readable font sizes
-- ✓ Clear button states
-- ✓ Form labels
-
----
-
-## Documentation & Testing
-
-### Generated Documentation Files
-
-1. **[QUICKSTART.md](QUICKSTART.md)** (60 lines)
-   - 60-second setup guide
-   - What you'll see on first run
-   - Quick troubleshooting
-   - Feature overview
-
-2. **[BUILD_COMPLETE.md](BUILD_COMPLETE.md)** (250 lines)
-   - Complete build summary
-   - Feature implementation details
-   - Verification checklist
-   - Next steps for integration
-
-3. **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** (500 lines)
-   - Detailed technical documentation
-   - Component descriptions
-   - Firestore schema documentation
-   - API callables documentation
-   - Error handling guide
-   - Troubleshooting section
-
-4. **[MANUAL_TEST_CHECKLIST.md](MANUAL_TEST_CHECKLIST.md)** (400 lines)
-   - 9 test groups
-   - 60+ individual test cases
-   - Step-by-step instructions
-   - Expected outcomes
-   - Prerequisites and sign-off
-
-5. **[INTEGRATION_TESTS.md](INTEGRATION_TESTS.md)** (200 lines)
-   - Key integration scenarios
-   - Firebase setup verification
-   - Real-time update testing
-   - localStorage recovery testing
-
-### Test Coverage
-
-**Documented Test Cases**: 60+
-
-**Test Groups**:
-1. Authentication (4 tests)
-2. User Document Creation (2 tests)
-3. Request Ride (4 tests)
-4. Form Validation (3 tests)
-5. Real-time Updates (5 tests)
-6. Cancel Ride (6 tests)
-7. localStorage Persistence (2 tests)
-8. Firestore Emulator (3 tests)
-9. UI/UX & Responsive Design (5 tests)
-10. Error Scenarios (8 tests)
-11. Performance Baselines (3 tests)
-
-**Test Execution**:
-All tests are manual (interactive testing), designed to be run in sequence following [MANUAL_TEST_CHECKLIST.md](MANUAL_TEST_CHECKLIST.md).
-
----
-
-## Build & Deployment
-
-### Build Status
-```
-✓ npm run build
-  ✓ TypeScript compilation: 0 errors
-  ✓ Vite bundling: Successful
-  ✓ Output: dist/ (780KB uncompressed, 202KB gzipped)
-  ✓ Build time: ~785ms
-```
-
-### Development
-```bash
-# Start dev server
-npm run dev
-
-# App available at http://localhost:5173
-# HMR enabled for fast iteration
-```
-
-### Production Build
 ```bash
 # Build for production
 npm run build
 
-# Preview build
-npm run preview
-
 # Deploy to Firebase Hosting
-firebase deploy --only hosting
+firebase deploy --only hosting:customer-app
 ```
 
-### Vite Configuration
-[vite.config.ts](vite.config.ts):
-- Port: 5173 (default, strict port disabled)
-- Alias: @ → /src (ready for use)
-- Optimization: Firebase modules pre-bundled
-- Output: dist/
+### Environment-Specific Deploys
+
+```bash
+# Staging
+firebase use staging
+firebase deploy --only hosting:customer-app
+
+# Production
+firebase use production
+firebase deploy --only hosting:customer-app
+```
 
 ---
 
-## Deployment Checklist
+## Performance
 
-- [ ] Run full test suite (MANUAL_TEST_CHECKLIST.md)
-- [ ] Test with driver app integration
-- [ ] Verify Firestore security rules
-- [ ] Enable analytics
-- [ ] Set up error tracking
-- [ ] Configure custom domain
-- [ ] Enable HTTPS
-- [ ] Set up CI/CD pipeline
-- [ ] Performance testing
-- [ ] Load testing
-- [ ] Security audit
+### Bundle Size
 
----
+- **Development:** ~2MB (with HMR)
+- **Production:** ~250KB gzipped
 
-## Known Limitations
+### Optimization Tips
 
-1. **Emulator Reset**: Firestore data resets when emulator restarts
-   - Solution: Use Firestore persistence (beta)
-
-2. **Manual Driver Actions**: Driver accept/decline must be simulated
-   - Solution: Use driver app or Firestore UI
-
-3. **No Real Payments**: Can't test payment flow in emulator
-   - Solution: Use Stripe test mode in production
-
-4. **Bundle Size**: 202KB gzipped (mostly Firebase SDK)
-   - Solution: Consider dynamic imports for future enhancements
+1. **Lazy Load Routes:** Use dynamic imports for large pages
+2. **Optimize Images:** Compress avatars and profile photos
+3. **Debounce Search:** Limit geocoding API calls
+4. **Minimize Listeners:** Close Firestore listeners when not needed
+5. **Cache Static Data:** Store saved places locally
 
 ---
 
-## Future Enhancement Opportunities
+## Common Issues
 
-### Short Term (Sprint 1-2)
-- [ ] Add map integration for location visualization
-- [ ] Estimated time of arrival (ETA) display
-- [ ] Driver information (name, rating, vehicle)
-- [ ] In-app chat with driver
-- [ ] Ride history/past trips
+### Issue: "Service firestore is not available"
 
-### Medium Term (Sprint 3-4)
-- [ ] Favorite locations / address book
-- [ ] Payment integration (Stripe)
-- [ ] Driver rating & review
-- [ ] Accessibility improvements (WCAG 2.1)
-- [ ] Internationalization (i18n)
+**Solution:** Ensure `firebase` package version matches across all packages (11.10.0+).
 
-### Long Term (Sprint 5+)
-- [ ] Push notifications
-- [ ] Deep linking
-- [ ] Progressive Web App (PWA)
-- [ ] Offline support
-- [ ] Advanced analytics
-- [ ] A/B testing framework
+### Issue: Map not displaying
+
+**Solution:** Check that Leaflet CSS is imported in `main.tsx` or `styles.css`.
+
+### Issue: Geocoding not working
+
+**Solution:** Verify Mapbox token is set in `.env` as `VITE_MAPBOX_ACCESS_TOKEN`.
+
+### Issue: Payment method won't add
+
+**Solution:** 
+1. Check Stripe publishable key is correct
+2. Ensure Cloud Functions are deployed
+3. Verify Stripe webhook is configured
 
 ---
 
-## Conclusion
+## Documentation
 
-The Customer App MVP is **production-ready** and includes:
-
-✅ All requested features fully implemented
-✅ Single Firebase instance verified
-✅ Comprehensive error handling
-✅ Real-time Firestore integration
-✅ Emulator configuration included
-✅ 60+ documented test cases
-✅ Detailed technical documentation
-✅ Clean, maintainable TypeScript code
-✅ Dark theme responsive design
-✅ Zero build errors or warnings
-
-The app is ready for:
-1. **Manual testing** using MANUAL_TEST_CHECKLIST.md
-2. **Integration testing** with driver app
-3. **Deployment** to Firebase Hosting
-4. **User acceptance testing** before production release
+- [Quick Start Guide](../../docs/customer-app/QUICKSTART.md)
+- [Implementation Guide](../../docs/customer-app/IMPLEMENTATION_GUIDE.md)
+- [Manual Test Checklist](../../docs/customer-app/MANUAL_TEST_CHECKLIST.md)
+- [Architecture Overview](../../docs/architecture/FILES.md)
 
 ---
 
-**Build Date**: December 31, 2025
-**Last Updated**: December 31, 2025
-**Status**: ✅ COMPLETE & TESTED
-**Ready for**: Integration & Deployment
+## Contributing
+
+1. Follow existing code style (ESLint + Prettier)
+2. Use TypeScript strict mode
+3. Test on both desktop and mobile browsers
+4. Update documentation for new features
+5. Write meaningful commit messages
+
+### Code Style
+
+- Use functional components with hooks
+- Prefer `const` over `let`
+- Use descriptive variable names
+- Add comments for complex logic
+- Extract reusable logic to custom hooks
+
+---
+
+## License
+
+Proprietary — ShiftX Platform
+
+---
+
+**Questions?** See [DEV_ONBOARDING.md](../../docs/DEV_ONBOARDING.md) or ask in Slack.

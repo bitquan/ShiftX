@@ -135,8 +135,15 @@ service cloud.firestore {
 
     // Admin logs: audit trail of admin actions
     match /adminLogs/{logId} {
-      allow read: if signedIn(); // All authenticated users can read logs (for transparency)
-      allow create: if isAdmin(); // Admins can create log entries
+      allow read: if isAdmin(); // Only admins can read logs
+      allow create: if true; // Cloud Functions create log entries
+      allow update, delete: if false; // Logs are immutable
+    }
+
+    // Error logs: runtime error tracking for debugging
+    match /errorLogs/{logId} {
+      allow read: if isAdmin(); // Only admins can read error logs
+      allow create: if true; // Cloud Functions and authenticated users can create error logs
       allow update, delete: if false; // Logs are immutable
     }
   }

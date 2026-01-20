@@ -32,6 +32,7 @@ export interface DriverProfile {
   isOnline?: boolean;
   isBusy?: boolean;
   approved?: boolean;
+  approvalBypassByAdmin?: boolean;
   currentRideId?: string | null;
   currentRideStatus?: 'accepted' | 'started' | 'in_progress' | 'completed';
   vehicle?: string;
@@ -44,6 +45,10 @@ export interface DriverProfile {
   updatedAtMs?: number;
   lastSeenAtMs?: number;
   location?: LatLng;
+  licensePhotoURL?: string;
+  insurancePhotoURL?: string;
+  vehiclePhotoURL?: string;
+  registrationPhotoURL?: string;
 }
 
 export interface UserProfile {

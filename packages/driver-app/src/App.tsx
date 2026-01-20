@@ -25,6 +25,7 @@ import { ProdDiagnostics } from './components/ProdDiagnostics';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
 import { EnvironmentBadge } from './components/EnvironmentBadge';
 import { EnvironmentWarningBanner } from './components/EnvironmentWarningBanner';
+import { DriverOnboarding } from './components/DriverOnboarding';
 import { watchRuntimeFlags, RuntimeFlags } from './utils/runtimeFlags';
 import { logEvent } from './utils/eventLog';
 import './styles.css';
@@ -507,7 +508,18 @@ export default function App() {
           </div>
         )}
 
-        {appState === 'home' && user && onboardingStatus === 'active' && (
+        {/* Show onboarding if user is not approved and doesn't have bypass */}
+        {user && onboardingStatus === 'active' && driverProfile && !driverProfile.approved && !driverProfile.approvalBypassByAdmin && (
+          <DriverOnboarding
+            userId={user.uid}
+            onComplete={() => {
+              // Onboarding complete - driver is now approved
+              // The watchDriverProfile will automatically update driverProfile
+            }}
+          />
+        )}
+
+        {appState === 'home' && user && onboardingStatus === 'active' && driverProfile && (driverProfile.approved || driverProfile.approvalBypassByAdmin) && (
           <>
             {/* Menu button for all screens */}
             <MenuButton onClick={() => setIsSideSheetOpen(true)} />

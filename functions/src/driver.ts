@@ -60,19 +60,19 @@ export const driverSetOnline = onCall<{ online: boolean }>(
 
     const driver = driverSnap.data();
 
-    // Check if driver is approved (admins bypass this check)
-    // TEMPORARILY DISABLED FOR DEVELOPMENT
-    // if (online) {
-    //   const userIsAdmin = await isAdmin(uid);
-    //   const driverApproved = driver?.approved === true;
-    //   
-    //   if (!userIsAdmin && !driverApproved) {
-    //     throw new HttpsError(
-    //       'permission-denied',
-    //       'Driver must be approved before going online'
-    //     );
-    //   }
-    // }
+    // Check if driver is approved or has admin bypass
+    if (online) {
+      const userIsAdmin = await isAdmin(uid);
+      const driverApproved = driver?.approved === true;
+      const hasAdminBypass = driver?.approvalBypassByAdmin === true;
+      
+      if (!userIsAdmin && !driverApproved && !hasAdminBypass) {
+        throw new HttpsError(
+          'permission-denied',
+          'Driver must be approved before going online'
+        );
+      }
+    }
 
     // Can't go offline while busy
     if (!online && driver?.isBusy) {
@@ -334,6 +334,70 @@ export const approveDriver = onCall<{ driverId: string; approved: boolean }>(
         driverId,
         driverEmail,
         approved,
+      },
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      timestampMs: Date.now(),
+    });
+
+    return { ok: true };
+  }
+);
+
+/**
+ * toggleApprovalBypass - Admin function to toggle approval bypass for a driver
+ * Allows admins to let drivers work without document verification in exceptional cases
+ */
+export const toggleApprovalBypass = onCall<{ driverId: string; bypass: boolean }>(
+  callableOptions,
+  async (request) => {
+    const adminUid = request.auth?.uid;
+    if (!adminUid) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    // Check if caller is admin
+    const userIsAdmin = await isAdmin(adminUid);
+    if (!userIsAdmin) {
+      throw new HttpsError('permission-denied', 'Only admins can toggle approval bypass');
+    }
+
+    const { driverId, bypass } = request.data;
+    if (!driverId || typeof driverId !== 'string') {
+      throw new HttpsError('invalid-argument', 'driverId must be a string');
+    }
+    if (typeof bypass !== 'boolean') {
+      throw new HttpsError('invalid-argument', 'bypass must be a boolean');
+    }
+
+    // Update driver bypass status
+    const driverRef = db.collection('drivers').doc(driverId);
+    const driverSnap = await driverRef.get();
+    
+    if (!driverSnap.exists) {
+      throw new HttpsError('not-found', 'Driver not found');
+    }
+
+    await driverRef.update({
+      approvalBypassByAdmin: bypass,
+      updatedAtMs: Date.now(),
+    });
+
+    // Get admin and driver details for logging
+    const adminDoc = await db.collection('users').doc(adminUid).get();
+    const adminEmail = adminDoc.data()?.email || 'unknown';
+    const driverData = driverSnap.data();
+    const driverEmail = driverData?.email || 'unknown';
+
+    // Log the action with full details
+    await db.collection('adminLogs').add({
+      adminUid,
+      adminEmail,
+      action: bypass ? 'enable_approval_bypass' : 'disable_approval_bypass',
+      details: {
+        driverId,
+        driverEmail,
+        bypass,
+        warning: 'Bypass allows driver to work without document verification',
       },
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       timestampMs: Date.now(),

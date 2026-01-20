@@ -9,6 +9,7 @@ interface Driver {
   photoURL?: string;
   phoneNumber?: string;
   approved: boolean;
+  approvalBypassByAdmin?: boolean;
   isOnline: boolean;
   vehicleClass?: string;
   vehicleMake?: string;
@@ -19,13 +20,18 @@ interface Driver {
   stripeConnectAccountId?: string;
   stripeConnectStatus?: 'none' | 'pending' | 'active' | 'disabled';
   connectEnabledOverride?: boolean;
+  licensePhotoURL?: string;
+  insurancePhotoURL?: string;
+  vehiclePhotoURL?: string;
+  registrationPhotoURL?: string;
 }
 
 export function Drivers() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'approved' | 'pending' | 'online'>('all');
+  const [filter, setFilter] = useState<'all' | 'approved' | 'pending' | 'online' | 'bypass'>('all');
   const [processing, setProcessing] = useState<string | null>(null);
+  const [expandedDocuments, setExpandedDocuments] = useState<string | null>(null);
 
   useEffect(() => {
     loadDrivers();
@@ -88,13 +94,36 @@ export function Drivers() {
       alert(error?.message || 'Failed to toggle pilot status');
     } finally {
       setProcessing(null);
+    
+
+  const handleToggleBypass = async (uid: string, currentValue: boolean) => {
+    if (!window.confirm(`${currentValue ? 'Remove' : 'Enable'} approval bypass for this driver?\n\n⚠️ WARNING: Bypass allows drivers to work WITHOUT document verification.\nOnly enable for trusted drivers in exceptional circumstances.`)) {
+      return;
     }
+
+    try {
+      setProcessing(uid);
+      const toggleApprovalBypass = httpsCallable(functions, 'toggleApprovalBypass');
+      await toggleApprovalBypass({ driverId: uid, bypass: !currentValue });
+      
+      // Update local state
+      setDrivers(drivers.map(d => 
+        d.uid === uid ? { ...d, approvalBypassByAdmin: !currentValue } : d
+      ));
+    } catch (error: any) {
+      console.error('Error toggling bypass:', error);
+      alert(error?.message || 'Failed to toggle approval bypass');
+    } finally {
+      setProcessing(null);
+    }
+  };}
   };
 
   const filteredDrivers = drivers.filter(driver => {
     if (filter === 'approved') return driver.approved;
-    if (filter === 'pending') return !driver.approved;
+    if (filter === 'pending') return !driver.approved && !driver.approvalBypassByAdmin;
     if (filter === 'online') return driver.isOnline;
+    if (filter === 'bypass') return driver.approvalBypassByAdmin;
     return true;
   });
 
@@ -123,7 +152,13 @@ export function Drivers() {
             className={filter === 'pending' ? 'active' : ''}
             onClick={() => setFilter('pending')}
           >
-            Pending ({drivers.filter(d => !d.approved).length})
+            Pending ({drivers.filter(d => !d.approved && !d.approvalBypassByAdmin).length})
+          </button>
+          <button
+            className={filter === 'bypass' ? 'active' : ''}
+            onClick={() => setFilter('bypass')}
+          >
+            🔓 Bypass ({drivers.filter(d => d.approvalBypassByAdmin).length})
           </button>
           <button
             className={filter === 'online' ? 'active' : ''}
@@ -224,6 +259,141 @@ export function Drivers() {
               </div>
 
               <div className="driver-actions">
+                {driver.approvalBypassByAdmin && (
+                  <div style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(251,191,36,0.15)',
+                    border: '1px solid rgba(251,191,36,0.3)',
+                    color: 'rgba(251,191,36,0.95)',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    marginBottom: '8px',
+                    textAlign: 'center',
+                  }}>
+                    🔓 Approval Bypass Active
+                  </div>
+                )}
+                
+                {/* Document Preview */}
+                {(driver.licensePhotoURL || driver.insurancePhotoURL || driver.vehiclePhotoURL || driver.registrationPhotoURL) && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <button
+                      onClick={() => setExpandedDocuments(expandedDocuments === driver.uid ? null : driver.uid)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        backgroundColor: 'rgba(139,92,246,0.15)',
+                        border: '1px solid rgba(139,92,246,0.3)',
+                        color: 'rgba(139,92,246,0.95)',
+                      }}
+                    >
+                      {expandedDocuments === driver.uid ? '📄 Hide Documents' : '📄 View Documents'}
+                    </button>
+                    
+                    {expandedDocuments === driver.uid && (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        backgroundColor: 'rgba(0,0,0,0.3)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                      }}>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, 1fr)',
+                          gap: '12px',
+                        }}>
+                          {driver.licensePhotoURL && (
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                                Driver License
+                              </div>
+                              <a href={driver.licensePhotoURL} target="_blank" rel="noopener noreferrer">
+                                <img 
+                                  src={driver.licensePhotoURL} 
+                                  alt="License"
+                                  style={{
+                                    width: '100%',
+                                    height: '120px',
+                                    objectFit: 'cover',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                  }}
+                                />
+                              </a>
+                            </div>
+                          )}
+                          {driver.insurancePhotoURL && (
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                                Insurance
+                              </div>
+                              <a href={driver.insurancePhotoURL} target="_blank" rel="noopener noreferrer">
+                                <img 
+                                  src={driver.insurancePhotoURL} 
+                                  alt="Insurance"
+                                  style={{
+                                    width: '100%',
+                                    height: '120px',
+                                    objectFit: 'cover',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                  }}
+                                />
+                              </a>
+                            </div>
+                          )}
+                          {driver.vehiclePhotoURL && (
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                                Vehicle Photo
+                              </div>
+                              <a href={driver.vehiclePhotoURL} target="_blank" rel="noopener noreferrer">
+                                <img 
+                                  src={driver.vehiclePhotoURL} 
+                                  alt="Vehicle"
+                                  style={{
+                                    width: '100%',
+                                    height: '120px',
+                                    objectFit: 'cover',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                  }}
+                                />
+                              </a>
+                            </div>
+                          )}
+                          {driver.registrationPhotoURL && (
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                                Registration
+                              </div>
+                              <a href={driver.registrationPhotoURL} target="_blank" rel="noopener noreferrer">
+                                <img 
+                                  src={driver.registrationPhotoURL} 
+                                  alt="Registration"
+                                  style={{
+                                    width: '100%',
+                                    height: '120px',
+                                    objectFit: 'cover',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                  }}
+                                />
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {driver.approved ? (
                   <>
                     <span className="status-badge approved">✓ Approved</span>
@@ -247,6 +417,32 @@ export function Drivers() {
                     </button>
                   </>
                 )}
+                
+                {/* Approval Bypass Toggle */}
+                <button
+                  onClick={() => handleToggleBypass(driver.uid, driver.approvalBypassByAdmin || false)}
+                  disabled={processing === driver.uid}
+                  style={{
+                    marginTop: '8px',
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    cursor: processing === driver.uid ? 'not-allowed' : 'pointer',
+                    backgroundColor: driver.approvalBypassByAdmin 
+                      ? 'rgba(239,68,68,0.15)' 
+                      : 'rgba(251,191,36,0.15)',
+                    border: `1px solid ${driver.approvalBypassByAdmin 
+                      ? 'rgba(239,68,68,0.3)' 
+                      : 'rgba(251,191,36,0.3)'}`,
+                    color: driver.approvalBypassByAdmin 
+                      ? '#ef4444' 
+                      : 'rgba(251,191,36,0.95)',
+                  }}
+                >
+                  {driver.approvalBypassByAdmin ? '🔒 Remove Bypass' : '🔓 Enable Bypass'}
+                </button>
               </div>
             </div>
           ))

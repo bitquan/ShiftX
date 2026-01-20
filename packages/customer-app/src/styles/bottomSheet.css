@@ -51,21 +51,51 @@
   background: rgba(255, 255, 255, 0.5);
 }
 
-/* Sheet content - scrollable */
+/* Sheet content - scrollable with improved padding and scrollbar */
 .sheet-content {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0; /* CRITICAL: allows flex child to shrink and scroll */
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  touch-action: pan-y;
+  touch-action: pan-y !important;
   -webkit-touch-callout: none;
+  padding: 0 16px 24px 16px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  position: relative;
+  z-index: 1;
 }
 
-/* Hide scrollbar but keep functionality */
+/* Show scrollbar on hover for desktop - better UX */
+.sheet-content:hover::-webkit-scrollbar {
+  width: 6px;
+  display: block;
+}
+
 .sheet-content::-webkit-scrollbar {
-  width: 0;
-  display: none;
+  width: 6px;
+}
+
+.sheet-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.sheet-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Collapsed state - hide overflow but keep flex layout */
+.bottom-sheet.collapsed .sheet-content {
+  overflow-y: hidden;
+  overflow-x: hidden;
+}
+
+/* Expanded state - force scrolling enabled */
+.bottom-sheet.expanded .sheet-content {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 
 /* Responsive - on larger screens, make it a centered card */

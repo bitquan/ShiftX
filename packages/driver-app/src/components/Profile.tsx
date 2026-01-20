@@ -5,6 +5,7 @@ import { getInitializedClient } from '@shiftx/driver-client';
 import { useToast } from './Toast';
 import { centsToDollars, parseDollarsToCents } from '../utils/money';
 import { ProfilePhotoUpload } from './ProfilePhotoUpload';
+import { DocumentUpload } from './DocumentUpload';
 import { StripeConnect } from './StripeConnect';
 import { RuntimeFlags } from '../utils/runtimeFlags';
 
@@ -253,6 +254,38 @@ export function Profile({ driverId, onboardingStatus, runtimeFlags }: ProfilePro
         }}>
           {photoURL ? '✅ Photo uploaded - You can go online' : '⚠️ Photo required to go online'}
         </p>
+      </div>
+      
+      {/* Driver Documents - Required for Approval */}
+      <div className="test-section">
+        <h3>📄 Driver Documents</h3>
+        <p style={{ 
+          fontSize: '0.85rem', 
+          color: 'rgba(255,255,255,0.6)',
+          marginBottom: '1rem'
+        }}>
+          Upload all required documents for admin approval
+        </p>
+        
+        <DocumentUpload
+          userId={driverId}
+          documentType="license"
+        />
+        
+        <DocumentUpload
+          userId={driverId}
+          documentType="insurance"
+        />
+        
+        <DocumentUpload
+          userId={driverId}
+          documentType="vehicle"
+        />
+        
+        <DocumentUpload
+          userId={driverId}
+          documentType="registration"
+        />
       </div>
       
       {/* Vehicle & Rates Settings */}

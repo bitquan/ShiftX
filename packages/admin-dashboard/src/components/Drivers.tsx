@@ -94,7 +94,8 @@ export function Drivers() {
       alert(error?.message || 'Failed to toggle pilot status');
     } finally {
       setProcessing(null);
-    
+    }
+  };
 
   const handleToggleBypass = async (uid: string, currentValue: boolean) => {
     if (!window.confirm(`${currentValue ? 'Remove' : 'Enable'} approval bypass for this driver?\n\n⚠️ WARNING: Bypass allows drivers to work WITHOUT document verification.\nOnly enable for trusted drivers in exceptional circumstances.`)) {
@@ -116,7 +117,6 @@ export function Drivers() {
     } finally {
       setProcessing(null);
     }
-  };}
   };
 
   const filteredDrivers = drivers.filter(driver => {

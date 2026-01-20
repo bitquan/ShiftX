@@ -275,40 +275,49 @@ export function Drivers() {
                   </div>
                 )}
                 
-                {/* Document Preview */}
-                {(driver.licensePhotoURL || driver.insurancePhotoURL || driver.vehiclePhotoURL || driver.registrationPhotoURL) && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <button
-                      onClick={() => setExpandedDocuments(expandedDocuments === driver.uid ? null : driver.uid)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        backgroundColor: 'rgba(139,92,246,0.15)',
-                        border: '1px solid rgba(139,92,246,0.3)',
-                        color: 'rgba(139,92,246,0.95)',
-                      }}
-                    >
-                      {expandedDocuments === driver.uid ? '📄 Hide Documents' : '📄 View Documents'}
-                    </button>
-                    
-                    {expandedDocuments === driver.uid && (
-                      <div style={{
-                        marginTop: '12px',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        backgroundColor: 'rgba(0,0,0,0.3)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                      }}>
+                {/* Document Preview - Always show button */}
+                <div style={{ marginBottom: '12px' }}>
+                  <button
+                    onClick={() => setExpandedDocuments(expandedDocuments === driver.uid ? null : driver.uid)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '6px',
+                      fontSize: '0.85rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      backgroundColor: 'rgba(139,92,246,0.2)',
+                      border: '2px solid rgba(139,92,246,0.5)',
+                      color: 'rgba(139,92,246,0.95)',
+                    }}
+                  >
+                    {expandedDocuments === driver.uid ? '📄 Hide Documents' : '📄 Review Documents'}
+                  </button>
+                  
+                  {expandedDocuments === driver.uid && (
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                    }}>
+                      {!driver.licensePhotoURL && !driver.insurancePhotoURL && !driver.vehiclePhotoURL && !driver.registrationPhotoURL ? (
+                        <div style={{
+                          textAlign: 'center',
+                          padding: '2rem',
+                          color: 'rgba(255,255,255,0.5)',
+                          fontSize: '0.9rem',
+                        }}>
+                          ⚠️ No documents uploaded yet
+                        </div>
+                      ) : (
                         <div style={{
                           display: 'grid',
                           gridTemplateColumns: 'repeat(2, 1fr)',
                           gap: '12px',
                         }}>
-                          {driver.licensePhotoURL && (
+                          {driver.licensePhotoURL ? (
                             <div>
                               <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
                                 Driver License
@@ -327,8 +336,28 @@ export function Drivers() {
                                 />
                               </a>
                             </div>
+                          ) : (
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                                Driver License
+                              </div>
+                              <div style={{
+                                width: '100%',
+                                height: '120px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(255,255,255,0.05)',
+                                border: '2px dashed rgba(255,255,255,0.2)',
+                                color: 'rgba(255,255,255,0.4)',
+                                fontSize: '0.75rem',
+                              }}>
+                                Not uploaded
+                              </div>
+                            </div>
                           )}
-                          {driver.insurancePhotoURL && (
+                          {driver.insurancePhotoURL ? (
                             <div>
                               <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
                                 Insurance
@@ -347,8 +376,28 @@ export function Drivers() {
                                 />
                               </a>
                             </div>
+                          ) : (
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                                Insurance
+                              </div>
+                              <div style={{
+                                width: '100%',
+                                height: '120px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(255,255,255,0.05)',
+                                border: '2px dashed rgba(255,255,255,0.2)',
+                                color: 'rgba(255,255,255,0.4)',
+                                fontSize: '0.75rem',
+                              }}>
+                                Not uploaded
+                              </div>
+                            </div>
                           )}
-                          {driver.vehiclePhotoURL && (
+                          {driver.vehiclePhotoURL ? (
                             <div>
                               <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
                                 Vehicle Photo
@@ -367,8 +416,28 @@ export function Drivers() {
                                 />
                               </a>
                             </div>
+                          ) : (
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                                Vehicle Photo
+                              </div>
+                              <div style={{
+                                width: '100%',
+                                height: '120px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(255,255,255,0.05)',
+                                border: '2px dashed rgba(255,255,255,0.2)',
+                                color: 'rgba(255,255,255,0.4)',
+                                fontSize: '0.75rem',
+                              }}>
+                                Not uploaded
+                              </div>
+                            </div>
                           )}
-                          {driver.registrationPhotoURL && (
+                          {driver.registrationPhotoURL ? (
                             <div>
                               <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
                                 Registration
@@ -387,12 +456,32 @@ export function Drivers() {
                                 />
                               </a>
                             </div>
+                          ) : (
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                                Registration
+                              </div>
+                              <div style={{
+                                width: '100%',
+                                height: '120px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(255,255,255,0.05)',
+                                border: '2px dashed rgba(255,255,255,0.2)',
+                                color: 'rgba(255,255,255,0.4)',
+                                fontSize: '0.75rem',
+                              }}>
+                                Not uploaded
+                              </div>
+                            </div>
                           )}
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {driver.approved ? (
                   <>

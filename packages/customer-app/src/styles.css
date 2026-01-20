@@ -54,8 +54,8 @@
   --card-bg-subtle: rgba(255, 255, 255, 0.05);
   --card-border: rgba(255, 255, 255, 0.1);
   
-  /* Standard padding for cards */
-  --card-padding: 1.5rem;  /* 24px */
+  /* Standard padding for cards (24px at 16px base font) */
+  --card-padding: 1.5rem;
 }
 
 html, body {

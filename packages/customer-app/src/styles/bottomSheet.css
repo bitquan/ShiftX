@@ -70,7 +70,6 @@
 /* Show scrollbar on hover for desktop - better UX */
 .sheet-content:hover::-webkit-scrollbar {
   width: 6px;
-  display: block;
 }
 
 .sheet-content::-webkit-scrollbar {

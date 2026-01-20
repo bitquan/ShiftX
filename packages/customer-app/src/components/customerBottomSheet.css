@@ -1,0 +1,100 @@
+/* Customer Bottom Sheet Styles */
+
+.customer-bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(15, 20, 33, 0.98);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: box-shadow 0.3s;
+}
+
+/* Disable map interactions while dragging */
+html.dragging-sheet .map-layer {
+  pointer-events: none !important;
+}
+
+/* Drag handle area */
+.sheet-drag-handle {
+  padding: 12px 0 8px 0;
+  display: flex;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+}
+
+.sheet-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* The pill indicator */
+.sheet-pill {
+  width: 40px;
+  height: 5px;
+  background: rgba(96, 165, 250, 0.4); /* Customer blue */
+  border-radius: 3px;
+  transition: background 0.2s;
+  pointer-events: none;
+}
+
+.sheet-drag-handle:hover .sheet-pill {
+  background: rgba(96, 165, 250, 0.6);
+}
+
+/* Sheet content */
+.sheet-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y !important;
+  -webkit-touch-callout: none;
+  padding: 0 20px 24px 20px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  position: relative;
+  z-index: 1;
+}
+
+/* Show scrollbar on hover for desktop */
+.sheet-content:hover::-webkit-scrollbar {
+  width: 6px;
+  display: block;
+}
+
+.sheet-content::-webkit-scrollbar-thumb {
+  background: rgba(96, 165, 250, 0.4);
+  border-radius: 3px;
+}
+
+.sheet-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Collapsed state */
+.customer-bottom-sheet.collapsed .sheet-content {
+  overflow-y: hidden;
+  overflow-x: hidden;
+}
+
+/* Expanded state */
+.customer-bottom-sheet.expanded .sheet-content {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}

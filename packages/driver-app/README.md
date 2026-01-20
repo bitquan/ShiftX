@@ -1,292 +1,402 @@
 # ShiftX Driver App
 
-Production-ready driver web and iOS app built with React, TypeScript, and Capacitor.
+**Status:** Production Ready  
+**Version:** Phase 4G (Native Navigation + Dual-Leg Routes)  
+**Tech Stack:** React 18 + TypeScript + Vite + Capacitor + Leaflet + Mapbox (iOS)
 
-## 🚗 Features
+---
 
-- **Ride Management** - Accept/decline ride offers with countdown timer
-- **Real-time GPS** - Location tracking with 5s/20m throttling
-- **Live Map** - Leaflet with OSRM routing and polylines
-- **Payment Status** - Visual indicators for payment authorization
-- **Wallet & Earnings** - Today/week earnings with ledger
-- **iOS Native** - Capacitor wrapper with Apple Maps integration
-- **Phase 2 UI** - MapShell + 2-snap BottomSheet design
+## Overview
 
-## 🏗️ Tech Stack
+The ShiftX Driver App is a modern, map-based ride-hailing driver application with real-time ride offers, turn-by-turn navigation, and earnings tracking. Built with React and TypeScript, it runs on web and iOS (via Capacitor).
 
-- **Frontend:** React 18.3 + TypeScript 5.3
-- **Build Tool:** Vite 5.0
-- **Maps:** Leaflet 1.9.4 + React Leaflet 4.x
-- **Routing:** OSRM (Open Source Routing Machine)
-- **Mobile:** Capacitor 8.0 (iOS wrapper)
-- **Backend:** Firebase (Auth, Firestore, Functions)
-- **Real-time:** Firestore snapshots + GPS heartbeat
+### Key Features
 
-## 📦 Setup
+✅ **Real-time Ride Offers** — Instant notifications for nearby ride requests  
+✅ **Native Navigation** — Mapbox turn-by-turn on iOS, web fallback for desktop  
+✅ **Dual-Leg Routes** — Visual pickup → dropoff route display  
+✅ **Camera Modes** — Follow driver position or overview entire route  
+✅ **Online/Offline Control** — Instant availability toggling  
+✅ **Earnings Dashboard** — Track daily/weekly earnings and payouts  
+✅ **Stripe Connect** — Integrated payout setup  
+✅ **Ride History** — Complete trip history with details  
+✅ **GPS Monitoring** — Real-time GPS health diagnostics  
+
+---
+
+## Architecture
+
+### Component Structure
+
+```
+MapShell (Full-screen layout)
+├── Map Layer (Leaflet + route visualization)
+├── UI Overlays
+│   ├── MenuButton (top-left)
+│   ├── EnvironmentBadge (top-center)
+│   ├── DiagnosticsPanel (top-right)
+│   └── BottomSheet (draggable panel)
+│       ├── DriverStatusCard (online/offline)
+│       ├── ActiveRideSheet (during ride)
+│       └── DriverOfferSheet (incoming offers)
+└── SideSheet (navigation drawer)
+    ├── Home
+    ├── Available Rides
+    ├── Ride History
+    ├── Profile
+    └── Wallet
+```
+
+### State Management
+
+- **Local State** — React hooks (useState, useEffect)
+- **Firebase Real-time** — Firestore listeners for offers and rides
+- **URL-based Navigation** — SideSheet menu with history stack
+
+### Map Integration
+
+- **Web:** Leaflet with OpenStreetMap tiles
+- **iOS Native:** Mapbox GL for turn-by-turn navigation
+- **Route Display:** Dual-leg polylines (pickup leg + ride leg)
+- **Camera Control:** Follow driver or overview route
+
+---
+
+## Development Setup
 
 ### Prerequisites
 
-- Node.js 18+ (LTS recommended)
-- npm 9+
-- Firebase CLI (`npm install -g firebase-tools`)
-- Xcode 15+ (for iOS builds)
-- CocoaPods (for iOS dependencies)
+- Node.js 20+
+- npm 10+
+- Firebase project with Firestore and Functions
+- (iOS only) Xcode 15+, CocoaPods
 
-### Install Dependencies
+### Installation
 
 ```bash
+# From repository root
+npm install
+
+# Install driver-app dependencies
 cd packages/driver-app
 npm install
 ```
 
-### Environment Variables
+### Environment Configuration
 
-Create `.env` file:
+Create a `.env` file in `packages/driver-app/`:
 
-```bash
+```env
 # Firebase Configuration
-VITE_FIREBASE_API_KEY=your-api-key
-VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project-id
-VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
 VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
 
-# Mapbox (optional for Phase 3)
-VITE_MAPBOX_ACCESS_TOKEN=pk.xxxxx
+# Emulator Mode (optional for local dev)
+VITE_USE_EMULATOR=true
+VITE_FIRESTORE_EMULATOR_HOST=localhost
+VITE_FIRESTORE_EMULATOR_PORT=8081
+VITE_FUNCTIONS_EMULATOR_HOST=localhost
+VITE_FUNCTIONS_EMULATOR_PORT=5002
+VITE_AUTH_EMULATOR_URL=http://localhost:9099
 
-# Feature Flags (optional)
-VITE_ENABLE_GPS_TRACKING=true
-VITE_GPS_UPDATE_INTERVAL=5000
-VITE_GPS_DISTANCE_THRESHOLD=20
+# Mapbox (for iOS navigation)
+VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_token
 ```
 
-**See [docs/ENVIRONMENT_VARIABLES.md](../../docs/ENVIRONMENT_VARIABLES.md) for complete reference.**
-
-## 🚀 Development
-
-### Web Development
+### Development Server
 
 ```bash
 npm run dev
 ```
 
-App runs at: http://localhost:4173
+Opens at `http://localhost:5173`
 
-### iOS Development
-
-1. **Build Web Assets:**
-   ```bash
-   npm run build
-   ```
-
-2. **Sync to iOS:**
-   ```bash
-   npx cap sync ios
-   ```
-
-3. **Open in Xcode:**
-   ```bash
-   npx cap open ios
-   ```
-
-4. **Run on Simulator/Device** from Xcode
-
-## 🏗️ Build
-
-### Production Web Build
+### Build
 
 ```bash
 npm run build
 ```
 
-Output: `dist/`
+Output: `dist/` directory
 
-Preview build:
+---
+
+## iOS Setup (Capacitor)
+
+### Sync Web Assets to iOS
+
 ```bash
-npm run preview  # Port 4174
-```
-
-### iOS Build
-
-```bash
-# Build web assets
-npm run build
-
-# Sync to iOS
+cd packages/ios-driver
 npx cap sync ios
+```
 
-# Open Xcode (build from there)
+### Open in Xcode
+
+```bash
 npx cap open ios
 ```
 
-**For TestFlight/App Store:** See [docs/DEPLOYMENT.md](../../docs/DEPLOYMENT.md#ios-deployment)
+### iOS Configuration
 
-## 📂 Project Structure
+1. **Info.plist** — Add location permissions:
+   ```xml
+   <key>NSLocationWhenInUseUsageDescription</key>
+   <string>We need your location to show your position on the map</string>
+   ```
 
+2. **Mapbox Token** — Add to `Info.plist`:
+   ```xml
+   <key>MBXAccessToken</key>
+   <string>your_mapbox_token_here</string>
+   ```
+
+3. **Build Settings** — Minimum iOS version: 15.0
+
+---
+
+## Key Components
+
+### DriverHome.tsx
+
+Main screen with map, status card, and ride management.
+
+**Features:**
+- Online/offline toggle
+- Real-time ride offer display
+- Active ride tracking
+- GPS diagnostics
+
+### ActiveRideSheet.tsx
+
+Displayed during active rides.
+
+**Features:**
+- Customer info (name, photo, rating)
+- Pickup/dropoff addresses with emoji dots
+- Payment warning badges
+- Multi-action buttons (Navigate, Call, Complete, Cancel)
+- Camera toggle (Follow/Overview)
+
+### DriverOfferSheet.tsx
+
+Shown when a new ride offer arrives.
+
+**Features:**
+- Customer location preview
+- Fare display
+- Distance to pickup
+- Accept/Decline buttons
+- Auto-decline countdown
+
+### MapShell Layout
+
+Full-screen map with floating UI overlays.
+
+**Sections:**
+- `topLeft` — Menu button
+- `topCenter` — Environment badge
+- `topRight` — Diagnostics
+- `rightStack` — Map controls
+- `bottomPanel` — Status/ride sheets
+- `bottomNav` — Bottom navigation (future)
+
+---
+
+## Styling Guidelines
+
+The driver app follows a consistent design system:
+
+### CSS Variables
+
+```css
+/* Spacing */
+--spacing-xs: 0.5rem;   /* 8px */
+--spacing-sm: 0.75rem;  /* 12px */
+--spacing-md: 1rem;     /* 16px */
+--spacing-lg: 1.25rem;  /* 20px */
+--spacing-xl: 1.5rem;   /* 24px */
+
+/* Colors */
+--color-customer-primary: #60a5fa;   /* Blue */
+--color-driver-primary: #10b981;     /* Green */
+--color-payment-warning: #ffb703;    /* Yellow */
+--color-action-primary: #fb8b24;     /* Orange */
+--color-error: #ef4444;              /* Red */
+
+/* Typography */
+--text-xs: 0.75rem;    /* 12px */
+--text-sm: 0.875rem;   /* 14px */
+--text-base: 1rem;     /* 16px */
+--text-lg: 1.125rem;   /* 18px */
+
+/* Cards */
+--card-padding: 1.5rem;  /* 24px */
+--card-bg: rgba(26, 26, 26, 0.98);
+--card-border: rgba(255, 255, 255, 0.1);
 ```
-driver-app/
-├── src/
-│   ├── components/          # React components
-│   │   ├── MapShell.tsx    # Main map container
-│   │   ├── SharedMap.tsx   # Leaflet map component
-│   │   ├── DriverSheet*.tsx # BottomSheet UI
-│   │   ├── ProfileScreen.tsx
-│   │   └── WalletScreen.tsx
-│   ├── hooks/              # Custom React hooks
-│   │   ├── useHeartbeat.ts # GPS tracking hook
-│   │   ├── useOffers.ts    # Ride offers listener
-│   │   └── useDriverProfile.ts
-│   ├── utils/              # Utilities
-│   │   └── mapDriverUiState.ts # State → UI mapper
-│   ├── App.tsx             # Root component
-│   ├── firebase.ts         # Firebase config
-│   └── main.tsx            # Entry point
-├── ios/                    # iOS project (Capacitor)
-│   └── App/
-│       └── App/
-│           ├── Info.plist  # iOS config
-│           └── capacitor.config.json
-├── public/                 # Static assets
-├── capacitor.config.ts     # Capacitor config
-├── vite.config.ts          # Vite config
-└── tsconfig.json           # TypeScript config
+
+### Card Patterns
+
+```tsx
+// Customer info card
+<div style={{
+  background: 'rgba(96, 165, 250, 0.1)',
+  border: '1px solid rgba(96, 165, 250, 0.3)',
+  borderRadius: '12px',
+  padding: '1rem'
+}}>
+  {/* Content */}
+</div>
+
+// Payment warning card
+<div style={{
+  background: 'rgba(255, 183, 3, 0.1)',
+  border: '1px solid rgba(255, 183, 3, 0.3)',
+  borderRadius: '12px',
+  padding: '1rem'
+}}>
+  {/* Content */}
+</div>
 ```
 
-## 🔑 Key Features
+---
 
-### GPS Heartbeat
+## Navigation Integration
 
-Driver location is automatically sent to Firebase when:
-- 5 seconds have elapsed since last update, OR
-- Driver has moved >20 meters
+### Native (iOS)
 
-Implementation: `src/hooks/useHeartbeat.ts`
+Uses Mapbox GL for turn-by-turn navigation:
 
-### Ride Offers
-
-Real-time ride offers via Firestore listener:
 ```typescript
-// Automatically listens to offers subcollection
-const { offers, loading } = useOffers(driverId);
+import { ShiftXNavigation } from './native/ShiftXNavigation';
+
+const nav = await ShiftXNavigation.init();
+await nav.startNavigation({
+  origin: { lat, lng },
+  destination: { lat, lng },
+  waypoints: []
+});
 ```
 
-### Payment Gating
+### Web Fallback
 
-Start Ride button is disabled until payment is authorized:
-- Status: `requires_authorization` → Show "Waiting for payment..."
-- Status: `authorized` → Enable "Start Ride" button
+Opens Google Maps in a new tab:
 
-### MapShell + BottomSheet
+```typescript
+const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+window.open(url, '_blank');
+```
 
-**Phase 2 Design:**
-- Map takes full screen
-- BottomSheet has 2 snap points:
-  - Snapped: Shows essential info (status, next action)
-  - Expanded: Shows full details + actions
+---
 
-**Gesture:** Swipe up/down to expand/collapse
+## Testing
 
-## 🧪 Testing
+### Manual Testing Checklist
 
-### Manual Testing
-
-1. **Sign Up/Login** - Create driver account
-2. **Profile Setup** - Add vehicle info, photo
-3. **Go Online** - Toggle online status
-4. **Accept Ride** - Wait for offer, accept
-5. **Start Ride** - Navigate to pickup, start when authorized
-6. **Complete Ride** - Navigate to dropoff, complete
-7. **Check Wallet** - Verify earnings appear
+- [ ] Sign in with driver account
+- [ ] Toggle online/offline status
+- [ ] Accept a ride offer
+- [ ] Start navigation to pickup
+- [ ] Complete pickup
+- [ ] Navigate to dropoff
+- [ ] Complete ride
+- [ ] View earnings in Wallet
+- [ ] Check ride history
 
 ### Emulator Testing
 
 ```bash
 # Start Firebase emulators
-firebase emulators:start --only auth,firestore,functions
+cd ../../  # repo root
+firebase emulators:start
 
-# In another terminal, start dev server
+# In another terminal
+cd packages/driver-app
 npm run dev
-```
-
-## 📱 iOS Configuration
-
-### Location Permissions
-
-In `ios/App/App/Info.plist`:
-
-```xml
-<key>NSLocationWhenInUseUsageDescription</key>
-<string>ShiftX needs your location to show your position on the map and send location updates to customers.</string>
-
-<key>NSLocationAlwaysUsageDescription</key>
-<string>ShiftX needs your location in the background to provide accurate driver tracking during rides.</string>
-
-<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-<string>ShiftX needs continuous location access to provide real-time driver tracking and navigation.</string>
-```
-
-### Capabilities
-
-- ✅ Background Modes → Location updates
-- ✅ Maps → Apple Maps integration
-- ✅ Push Notifications (future)
-
-## 🐛 Known Issues / TODOs
-
-### Phase 3 Roadmap
-
-- [ ] Wire up actual ride state from Firestore (currently uses placeholder)
-- [ ] Add real address geocoding for pickup/dropoff
-- [ ] Connect accept/decline handlers to existing functions
-- [ ] Show estimated fare and distance in offers
-- [ ] Add native navigation integration
-
-**See [docs/DRIVER_APP.md](../../docs/DRIVER_APP.md) for complete documentation.**
-
-## 📚 Documentation
-
-- **[DRIVER_APP.md](../../docs/DRIVER_APP.md)** - Complete architecture and feature docs
-- **[DEPLOYMENT.md](../../docs/DEPLOYMENT.md)** - iOS deployment guide
-- **[SETUP.md](../../docs/SETUP.md)** - Development setup
-- **[ENVIRONMENT_VARIABLES.md](../../docs/ENVIRONMENT_VARIABLES.md)** - Config reference
-
-## 🛠️ Troubleshooting
-
-### Issue: GPS not updating
-
-**Solution:** Check location permissions in iOS Settings
-
-### Issue: Firebase not connecting
-
-**Solution:** Verify `.env` file has all required variables
-
-### Issue: Build fails
-
-**Solution:**
-```bash
-# Clear cache
-rm -rf node_modules/.vite
-rm -rf dist
-
-# Reinstall
-npm install
-npm run build
-```
-
-### Issue: iOS build errors
-
-**Solution:**
-```bash
-# Update CocoaPods
-cd ios/App && pod install --repo-update
-
-# Clean Xcode build
-# In Xcode: Product → Clean Build Folder
 ```
 
 ---
 
-**Status:** Production Ready ✅  
-**Last Updated:** January 20, 2026  
-**Phase:** Phase 2 Complete (MapShell + BottomSheet)
+## Deployment
+
+### Web Deployment
+
+```bash
+npm run build
+firebase deploy --only hosting:driver-app
+```
+
+### iOS Deployment
+
+1. Build in Xcode
+2. Archive for distribution
+3. Upload to App Store Connect
+
+---
+
+## Common Issues
+
+### Issue: "Service firestore is not available"
+
+**Solution:** Ensure `firebase` is a peer dependency and only one instance is loaded.
+
+### Issue: iOS location not updating
+
+**Solution:** Check Info.plist location permissions and ensure GPS is enabled.
+
+### Issue: Route not displaying
+
+**Solution:** Verify route data format matches `{ lat, lng }[]` array.
+
+### Issue: Navigation button not working
+
+**Solution:** Check Mapbox token and ensure it's set in environment and iOS config.
+
+---
+
+## Performance
+
+### Bundle Size
+
+- **Development:** ~2MB (with HMR)
+- **Production:** ~250KB gzipped
+
+### Optimization Tips
+
+1. Use dynamic imports for large components
+2. Lazy load map tiles
+3. Debounce GPS updates (1-2 second intervals)
+4. Minimize Firestore listener count
+
+---
+
+## Documentation
+
+- [Phase 2 UI Implementation](../../docs/driver-app/DRIVER_UI_PHASE2.md)
+- [Phase 4B Native Navigation](../../docs/driver-app/DRIVER_UI_PHASE4B_native_navigation.md)
+- [Phase 4G Route Polylines](../../docs/driver-app/DRIVER_UI_PHASE4G_route_polylines.md)
+- [Architecture Overview](../../docs/architecture/FILES.md)
+
+---
+
+## Contributing
+
+1. Follow existing code style (ESLint + Prettier)
+2. Use TypeScript strict mode
+3. Add inline comments for complex logic
+4. Test on both web and iOS
+5. Update documentation for new features
+
+---
+
+## License
+
+Proprietary — ShiftX Platform
+
+---
+
+**Questions?** See [DEV_ONBOARDING.md](../../docs/DEV_ONBOARDING.md) or ask in Slack.

@@ -18,7 +18,7 @@
     "@dataconnect/generated": "file:src/dataconnect-generated",
     "@shiftx/driver-client": "file:../driver-client",
     "@types/leaflet": "^1.9.21",
-    "firebase": "^11.0.0",
+    "firebase": "^11.10.0",
     "leaflet": "^1.9.4",
     "qrcode.react": "^4.2.0",
     "react": "^18.3.0",

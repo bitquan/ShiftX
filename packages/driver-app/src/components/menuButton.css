@@ -1,0 +1,34 @@
+/* Hamburger Menu Button */
+
+.menu-button {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 16px);
+  left: calc(env(safe-area-inset-left) + 16px);
+  width: 48px;
+  height: 48px;
+  background: rgba(26, 26, 26, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 250;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s, transform 0.1s;
+}
+
+.menu-button:hover {
+  background: rgba(36, 36, 36, 0.95);
+}
+
+.menu-button:active {
+  transform: scale(0.95);
+}
+
+.menu-button svg {
+  pointer-events: none;
+}

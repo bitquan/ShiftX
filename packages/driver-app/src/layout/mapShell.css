@@ -62,10 +62,10 @@
 /* Top right corner - badges, diagnostics */
 .ui-top-right {
   position: absolute;
-  bottom: calc(200px + env(safe-area-inset-bottom)); /* Position above bottom sheet */
+  top: calc(env(safe-area-inset-top) + 12px);
   right: calc(env(safe-area-inset-right) + 12px);
   pointer-events: auto;
-  z-index: 50; /* Lower than bottom sheet to avoid overlap */
+  z-index: 200;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -88,7 +88,7 @@
 /* Bottom panel - fixed status card */
 .ui-bottom-panel {
   position: absolute;
-  bottom: calc(80px + env(safe-area-inset-bottom));
+  bottom: env(safe-area-inset-bottom); /* No bottom nav padding needed */
   left: calc(env(safe-area-inset-left) + 12px);
   right: calc(env(safe-area-inset-right) + 12px);
   pointer-events: auto;
@@ -97,12 +97,6 @@
   overflow-y: auto;
 }
 
-/* Bottom navigation */
-.ui-bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 150;
-  pointer-events: auto;
-}
+/* Bottom navigation - REMOVED (replaced with side sheet) */
+/* .ui-bottom-nav styles are no longer needed */
+

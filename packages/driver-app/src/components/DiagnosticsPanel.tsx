@@ -5,14 +5,30 @@ import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import { getInitializedClient } from '@shiftx/driver-client';
 import { useToast } from './Toast';
+import { 
+  getEvents, 
+  clearEvents, 
+  exportEventsAsJSON,
+  subscribeToEvents,
+  EventCategory,
+  EventLogEntry 
+} from '../utils/eventLog';
 
 interface DiagnosticsPanelProps {
   user: any;
+  gpsData?: {
+    currentLocation: { lat: number; lng: number } | null;
+    gpsError: string | null;
+    lastFixAtMs: number | null;
+    hasGpsFix: boolean;
+  };
 }
 
-export function DiagnosticsPanel({ user }: DiagnosticsPanelProps) {
+export function DiagnosticsPanel({ user, gpsData }: DiagnosticsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [events, setEvents] = useState<EventLogEntry[]>([]);
+  const [filterCategory, setFilterCategory] = useState<EventCategory | 'all'>('all');
   
   // Load saved position from localStorage or use default
   const savedPosition = localStorage.getItem('diagnostics-button-position');
@@ -22,6 +38,15 @@ export function DiagnosticsPanel({ user }: DiagnosticsPanelProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const { show } = useToast();
+
+  // Subscribe to event log changes
+  React.useEffect(() => {
+    const unsubscribe = subscribeToEvents(() => {
+      setEvents(getEvents());
+    });
+    setEvents(getEvents()); // Initial load
+    return unsubscribe;
+  }, []);
 
   // Only show in development
   if (import.meta.env.PROD) {
@@ -151,6 +176,58 @@ export function DiagnosticsPanel({ user }: DiagnosticsPanelProps) {
           </h3>
 
           <div style={{ fontSize: '0.85rem', lineHeight: '1.6' }}>
+            {/* Phase 2C-1: GPS Debug Info */}
+            {gpsData && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', marginBottom: '4px' }}>
+                  📍 GPS Status (Phase 2C-1)
+                </div>
+                <div style={{
+                  padding: '8px',
+                  backgroundColor: gpsData.hasGpsFix ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                  borderRadius: '4px',
+                  border: `1px solid ${gpsData.hasGpsFix ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                }}>
+                  <div style={{ marginBottom: '4px' }}>
+                    <span style={{ color: 'rgba(255,255,255,0.6)' }}>hasGpsFix:</span>{' '}
+                    <code style={{ color: gpsData.hasGpsFix ? 'rgba(16,185,129,0.95)' : 'rgba(239,68,68,0.95)' }}>
+                      {gpsData.hasGpsFix ? 'true ✓' : 'false ✗'}
+                    </code>
+                  </div>
+                  {gpsData.currentLocation && (
+                    <>
+                      <div style={{ marginBottom: '4px' }}>
+                        <span style={{ color: 'rgba(255,255,255,0.6)' }}>lat:</span>{' '}
+                        <code style={{ color: 'rgba(0,255,140,0.95)' }}>{gpsData.currentLocation.lat.toFixed(6)}</code>
+                      </div>
+                      <div style={{ marginBottom: '4px' }}>
+                        <span style={{ color: 'rgba(255,255,255,0.6)' }}>lng:</span>{' '}
+                        <code style={{ color: 'rgba(0,255,140,0.95)' }}>{gpsData.currentLocation.lng.toFixed(6)}</code>
+                      </div>
+                    </>
+                  )}
+                  {gpsData.lastFixAtMs && (
+                    <div style={{ marginBottom: '4px' }}>
+                      <span style={{ color: 'rgba(255,255,255,0.6)' }}>gpsAgeSeconds:</span>{' '}
+                      <code style={{ color: 'rgba(147,197,253,0.95)' }}>
+                        {((Date.now() - gpsData.lastFixAtMs) / 1000).toFixed(1)}s
+                      </code>
+                    </div>
+                  )}
+                  {gpsData.gpsError && !gpsData.hasGpsFix && (
+                    <div style={{ color: 'rgba(239,68,68,0.95)', marginTop: '4px' }}>
+                      ⚠️ Error: {gpsData.gpsError}
+                    </div>
+                  )}
+                  {gpsData.gpsError && gpsData.hasGpsFix && (
+                    <div style={{ color: 'rgba(251,191,36,0.95)', fontSize: '0.75rem', marginTop: '4px' }}>
+                      Note: Using last known position (error occurred after fix)
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Firebase Project */}
             <div style={{ marginBottom: '12px' }}>
               <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', marginBottom: '4px' }}>
@@ -327,6 +404,141 @@ export function DiagnosticsPanel({ user }: DiagnosticsPanelProps) {
                 </code>
               </div>
             </div>
+
+            {/* Phase 3F: Event Log Breadcrumbs */}
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '8px' 
+              }}>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem' }}>
+                  📝 Event Log (Phase 3F)
+                </div>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button
+                    onClick={() => {
+                      copyToClipboard(exportEventsAsJSON(), 'Event Log JSON');
+                    }}
+                    style={{
+                      padding: '2px 6px',
+                      backgroundColor: 'rgba(96,165,250,0.2)',
+                      border: '1px solid rgba(96,165,250,0.3)',
+                      borderRadius: '3px',
+                      fontSize: '0.7rem',
+                      color: 'rgba(255,255,255,0.9)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Export
+                  </button>
+                  <button
+                    onClick={() => {
+                      clearEvents();
+                      show('Event log cleared', 'info');
+                    }}
+                    style={{
+                      padding: '2px 6px',
+                      backgroundColor: 'rgba(239,68,68,0.2)',
+                      border: '1px solid rgba(239,68,68,0.3)',
+                      borderRadius: '3px',
+                      fontSize: '0.7rem',
+                      color: 'rgba(255,255,255,0.9)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              {/* Category Filter */}
+              <div style={{ marginBottom: '8px' }}>
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value as any)}
+                  style={{
+                    width: '100%',
+                    padding: '4px 8px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '4px',
+                    color: 'rgba(255,255,255,0.9)',
+                    fontSize: '0.75rem',
+                  }}
+                >
+                  <option value="all">All Events ({events.length})</option>
+                  <option value="auth">🔐 Auth</option>
+                  <option value="offer">📋 Offers</option>
+                  <option value="ride">🚗 Rides</option>
+                  <option value="location">📍 Location</option>
+                  <option value="navigation">🧭 Navigation</option>
+                  <option value="error">❌ Errors</option>
+                  <option value="system">⚙️ System</option>
+                </select>
+              </div>
+
+              {/* Event List */}
+              <div style={{
+                maxHeight: '300px',
+                overflowY: 'auto',
+                backgroundColor: 'rgba(0,0,0,0.3)',
+                borderRadius: '4px',
+                border: '1px solid rgba(255,255,255,0.1)',
+              }}>
+                {events
+                  .filter(e => filterCategory === 'all' || e.category === filterCategory)
+                  .map((event) => (
+                    <div
+                      key={event.id}
+                      style={{
+                        padding: '8px',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        fontSize: '0.75rem',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <span style={{
+                          color: getCategoryColor(event.category),
+                          fontWeight: '600',
+                        }}>
+                          {getCategoryEmoji(event.category)} {event.category.toUpperCase()}
+                        </span>
+                        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem' }}>
+                          {formatTimestamp(event.timestamp)}
+                        </span>
+                      </div>
+                      <div style={{ color: 'rgba(255,255,255,0.8)' }}>
+                        {event.message}
+                      </div>
+                      {event.details && (
+                        <div style={{
+                          marginTop: '4px',
+                          padding: '4px',
+                          backgroundColor: 'rgba(0,0,0,0.3)',
+                          borderRadius: '2px',
+                          fontSize: '0.7rem',
+                          color: 'rgba(255,255,255,0.6)',
+                          fontFamily: "'Monaco', 'Courier New', monospace",
+                        }}>
+                          {JSON.stringify(event.details, null, 2)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                {events.filter(e => filterCategory === 'all' || e.category === filterCategory).length === 0 && (
+                  <div style={{
+                    padding: '16px',
+                    textAlign: 'center',
+                    color: 'rgba(255,255,255,0.4)',
+                    fontSize: '0.75rem',
+                  }}>
+                    No events logged yet
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div style={{
@@ -343,4 +555,43 @@ export function DiagnosticsPanel({ user }: DiagnosticsPanelProps) {
       )}
     </div>
   );
+}
+
+// Helper functions for event log display
+function getCategoryEmoji(category: EventCategory): string {
+  switch (category) {
+    case 'auth': return '🔐';
+    case 'offer': return '📋';
+    case 'ride': return '🚗';
+    case 'location': return '📍';
+    case 'navigation': return '🧭';
+    case 'error': return '❌';
+    case 'system': return '⚙️';
+    default: return '📝';
+  }
+}
+
+function getCategoryColor(category: EventCategory): string {
+  switch (category) {
+    case 'auth': return 'rgba(59,130,246,0.95)';
+    case 'offer': return 'rgba(139,92,246,0.95)';
+    case 'ride': return 'rgba(16,185,129,0.95)';
+    case 'location': return 'rgba(6,182,212,0.95)';
+    case 'navigation': return 'rgba(245,158,11,0.95)';
+    case 'error': return 'rgba(239,68,68,0.95)';
+    case 'system': return 'rgba(107,114,128,0.95)';
+    default: return 'rgba(100,116,139,0.95)';
+  }
+}
+
+function formatTimestamp(timestamp: number): string {
+  const now = Date.now();
+  const diff = now - timestamp;
+  
+  if (diff < 1000) return 'just now';
+  if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`;
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString();
 }

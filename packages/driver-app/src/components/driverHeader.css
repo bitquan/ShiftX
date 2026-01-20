@@ -1,0 +1,98 @@
+/* Driver App Header - Persistent Top Navigation */
+
+.driver-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: rgba(26, 26, 26, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 9999; /* Higher than everything else */
+  padding-top: env(safe-area-inset-top);
+}
+
+.driver-header-content {
+  height: 56px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Back/Menu button */
+.driver-header-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: #60a5fa;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.driver-header-button:hover {
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.driver-header-button:active {
+  background: rgba(96, 165, 250, 0.2);
+}
+
+.driver-header-button svg {
+  flex-shrink: 0;
+}
+
+.driver-header-button-label {
+  font-size: 0.95rem;
+}
+
+/* Hide label on very narrow screens */
+@media (max-width: 360px) {
+  .driver-header-button-label {
+    display: none;
+  }
+}
+
+/* Title */
+.driver-header-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Right spacer (same width as left button for balance) */
+.driver-header-spacer {
+  width: 76px; /* Approximate width of Back/Menu button */
+}
+
+@media (max-width: 360px) {
+  .driver-header-spacer {
+    width: 48px; /* Narrower when label is hidden */
+  }
+}
+
+/* Content padding to account for header */
+.driver-app-content {
+  padding-top: calc(56px + env(safe-area-inset-top));
+}
+
+/* Map view should NOT have padding (header floats over map) */
+.driver-app-content.map-view {
+  padding-top: 0;
+}

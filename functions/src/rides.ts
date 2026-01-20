@@ -1055,6 +1055,39 @@ export const cancelRide = onCall<{ rideId: string; reason?: string }>(
         }
       });
 
+      // Cancel all pending offers for this ride (best-effort, don't fail cancellation if this fails)
+      try {
+        const offersSnapshot = await db
+          .collection('rides')
+          .doc(rideId)
+          .collection('offers')
+          .where('status', '==', 'pending')
+          .get();
+
+        if (!offersSnapshot.empty) {
+          const batch = db.batch();
+          const now = Date.now();
+
+          offersSnapshot.docs.forEach((offerDoc) => {
+            batch.update(offerDoc.ref, {
+              status: 'cancelled',
+              cancelledAtMs: now,
+              cancelReason: 'ride_cancelled',
+              updatedAtMs: now,
+            });
+          });
+
+          await batch.commit();
+          console.log(`[cancelRide] Cancelled ${offersSnapshot.size} pending offer(s) for ride ${rideId}`);
+        }
+      } catch (error: any) {
+        console.error('[cancelRide] Failed to cancel pending offers (non-fatal):', {
+          error: error.message,
+          rideId,
+        });
+        // Don't fail ride cancellation if offer cleanup fails
+      }
+
       // Cancel payment intent if it exists and hasn't been captured
       if (paymentIntentId && currentPaymentStatus !== 'captured') {
         try {
@@ -1203,6 +1236,39 @@ export const cancelActiveRide = onCall<{ rideId: string; reason: string }>(
           });
         }
       });
+
+      // Cancel all pending offers for this ride (best-effort, don't fail cancellation if this fails)
+      try {
+        const offersSnapshot = await db
+          .collection('rides')
+          .doc(rideId)
+          .collection('offers')
+          .where('status', '==', 'pending')
+          .get();
+
+        if (!offersSnapshot.empty) {
+          const batch = db.batch();
+          const now = Date.now();
+
+          offersSnapshot.docs.forEach((offerDoc) => {
+            batch.update(offerDoc.ref, {
+              status: 'cancelled',
+              cancelledAtMs: now,
+              cancelReason: 'ride_cancelled',
+              updatedAtMs: now,
+            });
+          });
+
+          await batch.commit();
+          console.log(`[cancelActiveRide] Cancelled ${offersSnapshot.size} pending offer(s) for ride ${rideId}`);
+        }
+      } catch (error: any) {
+        console.error('[cancelActiveRide] Failed to cancel pending offers (non-fatal):', {
+          error: error.message,
+          rideId,
+        });
+        // Don't fail ride cancellation if offer cleanup fails
+      }
 
       // Handle payment refund if payment was captured
       if (paymentIntentId && currentPaymentStatus === 'captured' && amountCaptured) {

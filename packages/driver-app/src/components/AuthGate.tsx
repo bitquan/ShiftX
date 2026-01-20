@@ -180,18 +180,6 @@ export function AuthGate({ user, loading = false, children, isSigningOutRef, dri
 
   return (
     <div className="auth-wrapper">
-      <div className="app-header safe-header" style={{
-        transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)',
-        transition: 'transform 0.3s ease-in-out',
-      }}>
-        <h1>ShiftX Driver</h1>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <DebugPanel driverProfile={driverProfile || null} currentRideId={currentRideId} driverUid={user?.uid} />
-          <button onClick={handleSignOut} className="secondary-button">
-            Sign out
-          </button>
-        </div>
-      </div>
       <div className="app-content">{children}</div>
     </div>
   );

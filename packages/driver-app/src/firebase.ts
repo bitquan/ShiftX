@@ -4,6 +4,8 @@
  * IMPORTANT: This file MUST be imported before any Firebase usage.
  * The driver-client initializes Firebase with a named app 'shiftx-driver-client',
  * so we must always use the instances from that app, never call getAuth() etc. without an app.
+ * 
+ * Phase 3F: Added safety rails - blocks emulator in prod, warns if prod backend in dev
  */
 
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
@@ -11,6 +13,17 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { initDriverClient, DEFAULT_EMULATOR_CONFIG } from '@shiftx/driver-client';
+import { 
+  blockEmulatorInProduction, 
+  logEnvironmentStatus 
+} from './utils/environmentGuard';
+import { logEvent } from './utils/eventLog';
+
+// Phase 3F: Safety Rails - Block emulator usage in production
+blockEmulatorInProduction();
+
+// Phase 3F: Log environment status on startup
+const envCheck = logEnvironmentStatus();
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -35,6 +48,13 @@ export const auth = getAuth(app);
 export const db = driverClient.firestore;
 export const functions = driverClient.functions;
 export const storage = driverClient.storage;
+
+// Log Firebase initialization
+logEvent('system', 'Firebase initialized', {
+  projectId: app.options.projectId,
+  isProduction: envCheck.isProduction,
+  isEmulator: envCheck.isEmulator,
+});
 
 // Connect emulators only in dev mode on localhost
 if (import.meta.env.DEV) {

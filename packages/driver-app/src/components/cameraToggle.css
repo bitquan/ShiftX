@@ -1,10 +1,6 @@
 /* Camera Toggle Styles */
 
 .camera-toggle {
-  position: absolute;
-  top: calc(env(safe-area-inset-top) + 60px);
-  right: 16px;
-  z-index: 50;
   display: flex;
   gap: 8px;
   background: rgba(26, 26, 26, 0.95);
@@ -58,8 +54,6 @@
 @media (max-width: 380px) {
   .camera-toggle {
     flex-direction: column;
-    top: calc(env(safe-area-inset-top) + 60px);
-    right: 12px;
     padding: 4px;
     gap: 4px;
   }

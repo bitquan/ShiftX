@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { driverHeartbeat } from '@shiftx/driver-client';
+import { logEvent } from '../utils/eventLog';
 
 // Calculate distance between two points in meters (Haversine formula)
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -18,33 +19,51 @@ function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: numbe
 }
 
 function geoErrorToMessage(err: GeolocationPositionError): string {
-  if (err.code === err.PERMISSION_DENIED) return 'Permission denied';
+  if (err.code === err.PERMISSION_DENIED) {
+    logEvent('location', 'GPS permission denied in useHeartbeat');
+    return 'Permission denied';
+  }
   if (err.code === err.POSITION_UNAVAILABLE) return 'Unavailable';
   if (err.code === err.TIMEOUT) return 'Timeout';
   return 'Unknown error';
 }
 
 interface HeartbeatResult {
-  currentLocation: { lat: number; lng: number } | null;
+  currentLocation: { lat: number; lng: number; heading?: number } | null;
   gpsError: string | null;
   lastFixAtMs: number | null;
   retryGps: () => void;
+  hasGpsFix: boolean;
 }
 
-export function useHeartbeat(enabled: boolean, interval: number = 5000): HeartbeatResult {
+export function useHeartbeat(sendHeartbeats: boolean, interval: number = 5000): HeartbeatResult {
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const sessionIdRef = useRef(0); // Race condition protection
-  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number; heading?: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [lastFixAtMs, setLastFixAtMs] = useState<number | null>(null);
   const [retryCounter, setRetryCounter] = useState(0); // Force effect re-run
   const lastSentLocationRef = useRef<{ lat: number; lng: number; timestamp: number } | null>(null);
+  const [hasGpsFix, setHasGpsFix] = useState(false);
+
+  // Phase 2C-1: Always track GPS (enabled=true always), but only send heartbeats when sendHeartbeats=true
+  const alwaysTrackGps = true;
+
+  // Reset lastSent when going online to ensure immediate heartbeat
+  const prevSendHeartbeatsRef = useRef(sendHeartbeats);
+  useEffect(() => {
+    if (sendHeartbeats && !prevSendHeartbeatsRef.current) {
+      console.log('[useHeartbeat] Going online - resetting lastSent to force immediate heartbeat');
+      lastSentLocationRef.current = null;
+    }
+    prevSendHeartbeatsRef.current = sendHeartbeats;
+  }, [sendHeartbeats]);
 
   useEffect(() => {
-    if (!enabled) {
-      // TELEMETRY: Going offline
-      console.log('[useHeartbeat] Stopping: enabled=false');
+    if (!alwaysTrackGps) {
+      // TELEMETRY: Stopping GPS tracking
+      console.log('[useHeartbeat] Stopping: GPS tracking disabled');
       
       // Cleanup heartbeat
       if (heartbeatRef.current) {
@@ -94,6 +113,7 @@ export function useHeartbeat(enabled: boolean, interval: number = 5000): Heartbe
       const location = {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
+        heading: position.coords.heading !== null ? position.coords.heading : undefined,
       };
       
       if (!hasInitialPosition) {
@@ -104,6 +124,13 @@ export function useHeartbeat(enabled: boolean, interval: number = 5000): Heartbe
       setCurrentLocation(location);
       setGpsError(null);
       setLastFixAtMs(Date.now());
+      setHasGpsFix(true);
+      
+      // Phase 2C-1: Only send heartbeats when online (sendHeartbeats=true)
+      if (!sendHeartbeats) {
+        console.log('[useHeartbeat] GPS updated, but not sending heartbeat (offline)');
+        return;
+      }
       
       // Throttle: send if moved > 20m OR 5s elapsed
       const now = Date.now();
@@ -252,7 +279,7 @@ export function useHeartbeat(enabled: boolean, interval: number = 5000): Heartbe
         watchIdRef.current = null;
       }
     };
-  }, [enabled, interval, retryCounter]);
+  }, [sendHeartbeats, interval, retryCounter]);
 
   // Retry GPS function
   const retryGps = useCallback(() => {
@@ -261,5 +288,5 @@ export function useHeartbeat(enabled: boolean, interval: number = 5000): Heartbe
     setRetryCounter(prev => prev + 1); // Trigger effect to restart GPS
   }, []);
 
-  return { currentLocation, gpsError, lastFixAtMs, retryGps };
+  return { currentLocation, gpsError, lastFixAtMs, retryGps, hasGpsFix };
 }

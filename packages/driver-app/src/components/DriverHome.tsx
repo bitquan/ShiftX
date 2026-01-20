@@ -1,13 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { DriverProfile, driverSetOnline, getInitializedClient, RideOffer } from '@shiftx/driver-client';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useHeartbeat } from '../hooks/useHeartbeat';
+import { useDriverRoutes } from '../hooks/useDriverRoutes';
 import { useToast } from './Toast';
 import { BottomSheet } from './BottomSheet';
 import { DriverSheetCollapsed } from './DriverSheetCollapsed';
 import { DriverSheetExpanded } from './DriverSheetExpanded';
+import { ActiveRideSheet } from './ActiveRideSheet';
+import { DriverOfferSheet } from './DriverOfferSheet';
 import { CameraToggle } from './CameraToggle';
 import { TabId } from './BottomNav';
 import { RuntimeFlags } from '../utils/runtimeFlags';
+import { logEvent } from '../utils/eventLog';
 import { MapShell } from '../layout/MapShell';
 import { SharedMap } from './map/SharedMap';
 import { EnvironmentBadge } from './EnvironmentBadge';
@@ -23,9 +28,12 @@ interface DriverHomeProps {
   onViewActiveRide?: () => void;
   setActiveTab: (tab: TabId) => void;
   runtimeFlags: RuntimeFlags | null;
+  onGpsDataUpdate?: (gpsData: { currentLocation: { lat: number; lng: number } | null; gpsError: string | null; lastFixAtMs: number | null; hasGpsFix: boolean }) => void;
+  onOfferAccepted: () => void;
+  onOfferExpired: () => void;
 }
 
-export function DriverHome({ driverId, profile, hasActiveRide, activeRideId, pendingOffers, onCreateTestRide, onViewActiveRide, setActiveTab, runtimeFlags }: DriverHomeProps) {
+export function DriverHome({ driverId, profile, hasActiveRide, activeRideId, pendingOffers, onCreateTestRide, onViewActiveRide, setActiveTab, runtimeFlags, onGpsDataUpdate, onOfferAccepted, onOfferExpired }: DriverHomeProps) {
   const { show } = useToast();
   const isOnline = profile?.isOnline ?? false;
   const driverPhotoURL = profile?.photoURL || null;
@@ -55,7 +63,7 @@ export function DriverHome({ driverId, profile, hasActiveRide, activeRideId, pen
     }
   }, [isOnline]);
 
-  // Start heartbeat ONLY when state is 'online'
+  // Phase 2C-1: Always track GPS, but only send heartbeats when online
   const { currentLocation, gpsError, lastFixAtMs, retryGps } = useHeartbeat(onlineState === 'online');
 
   // Check location permission status on mount
@@ -117,6 +125,7 @@ export function DriverHome({ driverId, profile, hasActiveRide, activeRideId, pen
 
       // Going online
       console.log('[DriverHome] Going online...');
+      logEvent('system', 'Driver going online', { driverId });
       setOnlineState('going_online');
 
       if (!('geolocation' in navigator)) {
@@ -268,8 +277,104 @@ export function DriverHome({ driverId, profile, hasActiveRide, activeRideId, pen
 
   const isTransitioning = onlineState === 'going_online' || onlineState === 'going_offline';
 
-  // Simple placeholder map for Phase 1  
-  const driverLocation = currentLocation ?? { lat: 38.8976, lng: -77.0369 }; // DC default
+  // Phase 2C-1: Always use GPS, only fallback before first fix
+  const hasGpsFix = !!(currentLocation && 
+    !Number.isNaN(currentLocation.lat) && 
+    !Number.isNaN(currentLocation.lng));
+  
+  // Only use DC fallback if no GPS fix yet (fresh install / permissions denied)
+  const driverLocation = hasGpsFix 
+    ? currentLocation 
+    : { lat: 38.8976, lng: -77.0369 }; // Fallback only before first GPS fix
+
+  // Phase 2C-1: Report GPS data for diagnostics
+  useEffect(() => {
+    if (onGpsDataUpdate) {
+      onGpsDataUpdate({ currentLocation, gpsError, lastFixAtMs, hasGpsFix });
+    }
+  }, [currentLocation, gpsError, lastFixAtMs, hasGpsFix, onGpsDataUpdate]);
+
+  // Phase 4G: Watch active ride for pickup/dropoff locations
+  const [activeRideData, setActiveRideData] = useState<{
+    pickup: { lat: number; lng: number } | null;
+    dropoff: { lat: number; lng: number } | null;
+    status: string | null;
+  }>({ pickup: null, dropoff: null, status: null });
+
+  // Check if we have a pending offer to show
+  const hasPendingOffer = pendingOffers.size > 0;
+  const firstOffer = hasPendingOffer ? Array.from(pendingOffers.entries())[0] : null;
+  const [offerRideId, offerData] = firstOffer || [null, null];
+
+  // Watch the relevant ride ID (either from offer or active ride)
+  const watchRideId = offerRideId || activeRideId;
+
+  useEffect(() => {
+    if (!watchRideId) {
+      setActiveRideData({ pickup: null, dropoff: null, status: null });
+      return;
+    }
+
+    const { firestore } = getInitializedClient();
+    const rideRef = doc(firestore, 'rides', watchRideId);
+    
+    const unsubscribe = onSnapshot(rideRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setActiveRideData({
+          pickup: data.pickup || null,
+          dropoff: data.dropoff || null,
+          status: data.status || null,
+        });
+      } else {
+        setActiveRideData({ pickup: null, dropoff: null, status: null });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [watchRideId]);
+
+  const rideStatus = useMemo(() => {
+    if (offerData) {
+      return 'accepted' as const; // Offers are always pre-trip
+    }
+    if (activeRideData.status === 'in_progress') {
+      return 'in_progress' as const;
+    }
+    if (activeRideData.status === 'accepted' || activeRideData.status === 'started') {
+      return 'accepted' as const;
+    }
+    return null;
+  }, [offerData, activeRideData.status]);
+
+  // Phase 4G: Get ride locations - only if we have a valid ride status
+  const ridePickup = useMemo(() => {
+    // Don't show routes if ride is completed/cancelled
+    if (!rideStatus) return null;
+    return activeRideData.pickup;
+  }, [activeRideData.pickup, rideStatus]);
+
+  const rideDropoff = useMemo(() => {
+    // Don't show routes if ride is completed/cancelled
+    if (!rideStatus) return null;
+    return activeRideData.dropoff;
+  }, [activeRideData.dropoff, rideStatus]);
+
+  // Phase 4G: Calculate dual-leg routes with throttling
+  const {
+    legA,
+    legB,
+    allCoords,
+    loading: routesLoading,
+    activeLeg,
+  } = useDriverRoutes({
+    driverLocation: currentLocation,
+    pickup: ridePickup,
+    dropoff: rideDropoff,
+    rideStatus,
+    updateThresholdMeters: 10, // Update if driver moves > 10m
+    throttleMs: 3000, // Throttle updates to 3 seconds
+  });
 
   // Build UI state for mapping
   const driverUiState: DriverUiState = {
@@ -283,9 +388,23 @@ export function DriverHome({ driverId, profile, hasActiveRide, activeRideId, pen
     currentLocation,
     gpsError,
   };
-  
-  // TODO Phase 3: Determine if there's an active route (pickup or dropoff navigation)
-  const hasActiveRoute = false; // Will be true when en_route_to_pickup or en_route_to_dropoff
+
+  // Phase 4G: Determine if there's an active route
+  const hasActiveRoute = !!(legA || legB);
+
+  // Reset camera mode to follow when route disappears
+  useEffect(() => {
+    if (!hasActiveRoute && cameraMode === 'overview') {
+      setCameraMode('follow');
+    }
+  }, [hasActiveRoute, cameraMode]);
+
+  // Phase 4G: Generate fitKey for camera bounds - only change on major state transitions
+  const fitKey = useMemo(() => {
+    if (!hasActiveRoute) return '';
+    // Key changes when: offer appears, ride accepted, ride status changes, or route legs change
+    return `${offerRideId || activeRideId || 'none'}-${rideStatus}-${activeLeg}`;
+  }, [offerRideId, activeRideId, rideStatus, activeLeg, hasActiveRoute]);
 
   return (
     <MapShell
@@ -293,14 +412,17 @@ export function DriverHome({ driverId, profile, hasActiveRide, activeRideId, pen
         <SharedMap
           center={driverLocation}
           driverLocation={driverLocation}
-          pickup={null}
-          dropoff={null}
-          routeCoords={null}
-          shouldFit={false}
+          pickup={ridePickup}
+          dropoff={rideDropoff}
+          legA={legA}
+          legB={legB}
+          activeLeg={activeLeg}
+          shouldFit={hasActiveRoute}
+          fitKey={fitKey}
+          cameraMode={cameraMode}
         />
       }
-      topCenter={<EnvironmentBadge />}
-      rightStack={
+      topRight={
         <CameraToggle
           mode={cameraMode}
           onModeChange={setCameraMode}
@@ -309,32 +431,90 @@ export function DriverHome({ driverId, profile, hasActiveRide, activeRideId, pen
       }
       bottomPanel={
         <BottomSheet
-          defaultSnap="collapsed"
+          defaultSnap={(hasActiveRide || hasPendingOffer) ? "expanded" : "collapsed"}
           collapsedContent={
-            <DriverSheetCollapsed
-              state={driverUiState}
-              onToggleOnline={handleToggleOnline}
-            />
+            hasActiveRide && activeRideId ? (
+              <ActiveRideSheet
+                rideId={activeRideId}
+                currentStatus={profile?.currentRideStatus as any || 'accepted'}
+                onStatusUpdate={(newStatus) => {
+                  console.log('[DriverHome] Ride status updated:', newStatus);
+                  // Status will be updated via watchDriverProfile listener
+                }}
+                onCancelled={() => {
+                  console.log('[DriverHome] Ride ended, returning to idle state');
+                  // Cleanup handled by watchDriverProfile listener which clears currentRideId
+                  // Force UI update by ensuring we're back to idle after slight delay
+                  setTimeout(() => {
+                    // State will automatically reflect idle when profile updates from backend
+                  }, 100);
+                }}
+                driverLocation={currentLocation}
+              />
+            ) : hasPendingOffer && offerRideId && offerData ? (
+              <DriverOfferSheet
+                rideId={offerRideId}
+                offer={offerData}
+                onAccepted={onOfferAccepted}
+                onExpired={onOfferExpired}
+                runtimeFlags={runtimeFlags}
+                driverLocation={currentLocation}
+              />
+            ) : (
+              <DriverSheetCollapsed
+                state={driverUiState}
+                onToggleOnline={handleToggleOnline}
+              />
+            )
           }
           expandedContent={
-            <DriverSheetExpanded
-              state={driverUiState}
-              driverId={driverId}
-              driverPhotoURL={driverPhotoURL}
-              onToggleOnline={handleToggleOnline}
-              onRetryGps={retryGps}
-              onCreateTestRide={handleCreateTestRide}
-              onViewActiveRide={onViewActiveRide}
-              setActiveTab={setActiveTab}
-              runtimeFlags={runtimeFlags}
-              isInsecureOrigin={isInsecureOrigin}
-              showAvailability={showAvailability}
-              setShowAvailability={setShowAvailability}
-              isCreatingTest={isCreatingTest}
-              isSpawningDrivers={isSpawningDrivers}
-              onSpawnDrivers={handleSpawnDrivers}
-              onCleanupTestData={handleRunCleanup}
-            />
+            hasActiveRide && activeRideId ? (
+              <ActiveRideSheet
+                rideId={activeRideId}
+                currentStatus={profile?.currentRideStatus as any || 'accepted'}
+                onStatusUpdate={(newStatus) => {
+                  console.log('[DriverHome] Ride status updated:', newStatus);
+                  // Status will be updated via watchDriverProfile listener
+                }}
+                onCancelled={() => {
+                  console.log('[DriverHome] Ride ended, returning to idle state');
+                  // Cleanup handled by watchDriverProfile listener which clears currentRideId
+                  // Force UI update by ensuring we're back to idle after slight delay
+                  setTimeout(() => {
+                    // State will automatically reflect idle when profile updates from backend
+                  }, 100);
+                }}
+                driverLocation={currentLocation}
+              />
+            ) : hasPendingOffer && offerRideId && offerData ? (
+              <DriverOfferSheet
+                rideId={offerRideId}
+                offer={offerData}
+                onAccepted={onOfferAccepted}
+                onExpired={onOfferExpired}
+                runtimeFlags={runtimeFlags}
+                driverLocation={currentLocation}
+              />
+            ) : (
+              <DriverSheetExpanded
+                state={driverUiState}
+                driverId={driverId}
+                driverPhotoURL={driverPhotoURL}
+                onToggleOnline={handleToggleOnline}
+                onRetryGps={retryGps}
+                onCreateTestRide={handleCreateTestRide}
+                onViewActiveRide={onViewActiveRide}
+                setActiveTab={setActiveTab}
+                runtimeFlags={runtimeFlags}
+                isInsecureOrigin={isInsecureOrigin}
+                showAvailability={showAvailability}
+                setShowAvailability={setShowAvailability}
+                isCreatingTest={isCreatingTest}
+                isSpawningDrivers={isSpawningDrivers}
+                onSpawnDrivers={handleSpawnDrivers}
+                onCleanupTestData={handleRunCleanup}
+              />
+            )
           }
         />
       }

@@ -1,0 +1,219 @@
+/* Side Sheet Navigation Drawer */
+
+/* Backdrop overlay */
+.side-sheet-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Side sheet drawer */
+.side-sheet {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  max-width: 80vw;
+  background: rgba(26, 26, 26, 0.98);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overflow-y: auto; /* Allow scrolling if content overflows */
+}
+
+.side-sheet.open {
+  transform: translateX(0);
+}
+
+/* Header */
+.side-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.side-sheet-brand {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.side-sheet-close {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.side-sheet-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* Navigation list */
+.side-sheet-nav {
+  flex: 0 0 auto;
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+}
+
+.side-sheet-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 1rem;
+  text-align: left;
+  transition: background 0.2s, color 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.side-sheet-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.side-sheet-item.active {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60a5fa;
+  border-left-color: #60a5fa;
+}
+
+.side-sheet-icon {
+  font-size: 1.5rem;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.side-sheet-label {
+  font-weight: 500;
+}
+
+/* Environment Info Section */
+.side-sheet-environment {
+  margin-top: auto;
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.environment-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.75rem 0;
+}
+
+.environment-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.env-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.env-badge.dev {
+  background-color: #10b981;
+  color: white;
+}
+
+.env-badge.prod {
+  background-color: #ef4444;
+  color: white;
+}
+
+.env-badge.test {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.env-badge.live {
+  background-color: #8b5cf6;
+  color: white;
+}
+
+.env-badge.emulator {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.env-badge.production {
+  background-color: #6366f1;
+  color: white;
+}
+
+.environment-hostname {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+  font-family: 'Courier New', monospace;
+}
+
+/* Footer */
+.side-sheet-footer {
+  padding: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.side-sheet-version {
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .side-sheet {
+    transition: none;
+  }
+  
+  .side-sheet-backdrop {
+    animation: none;
+  }
+}

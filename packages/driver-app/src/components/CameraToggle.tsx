@@ -18,24 +18,19 @@ export function CameraToggle({ mode, onModeChange, hasRoute = false }: CameraTog
     return null;
   }
   
+  const toggleMode = () => {
+    onModeChange(mode === 'follow' ? 'overview' : 'follow');
+  };
+  
   return (
     <div className="camera-toggle">
       <button
-        className={`camera-btn ${mode === 'follow' ? 'active' : ''}`}
-        onClick={() => onModeChange('follow')}
-        aria-label="Follow driver"
+        className={`camera-btn active`}
+        onClick={toggleMode}
+        aria-label={mode === 'follow' ? 'Switch to overview' : 'Switch to follow'}
       >
-        <span className="icon">📍</span>
-        <span className="label">Follow</span>
-      </button>
-      
-      <button
-        className={`camera-btn ${mode === 'overview' ? 'active' : ''}`}
-        onClick={() => onModeChange('overview')}
-        aria-label="Overview of route"
-      >
-        <span className="icon">🗺️</span>
-        <span className="label">Overview</span>
+        <span className="icon">{mode === 'follow' ? '📍' : '🗺️'}</span>
+        <span className="label">{mode === 'follow' ? 'Follow' : 'Overview'}</span>
       </button>
     </div>
   );

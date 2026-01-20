@@ -9,6 +9,8 @@ import { SharedMap } from './map/SharedMap';
 import { TripCard } from './ui/TripCard';
 import { PaymentAuthorize } from './PaymentAuthorize';
 import { Receipt } from './Receipt';
+import { CustomerMapShell } from './CustomerMapShell';
+import { CustomerBottomSheet } from './CustomerBottomSheet';
 import { useRoutePolyline } from '../hooks/useRoutePolyline';
 import { useDriverEta } from '../hooks/useDriverEta';
 import { RuntimeFlags } from '../utils/runtimeFlags';
@@ -67,12 +69,6 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry, runtimeFlags 
 
   // Route polyline (using shared hook)
   const { coords: routeLatLngs, distanceMeters } = useRoutePolyline(ride?.pickup, ride?.dropoff);
-  
-  // Compute stable route key for fitBounds (only based on pickup/dropoff, not driver location)
-  const routeKey = useMemo(() => {
-    if (!ride?.pickup || !ride?.dropoff) return '';
-    return `${ride.pickup.lat},${ride.pickup.lng}-${ride.dropoff.lat},${ride.dropoff.lng}`;
-  }, [ride?.pickup, ride?.dropoff]);
   
   // Memoize driver location to prevent unnecessary re-renders
   const driverLocation = useMemo(() => ride?.driverLocation || null, [ride?.driverLocation]);
@@ -329,10 +325,21 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry, runtimeFlags 
     );
   }
 
-  return (
-    <div className="screen-container">
-      <div className="card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <h2 style={{ marginBottom: '16px' }}>Ride Status</h2>
+  // Map content
+  const mapContent = (
+    <SharedMap
+      pickup={ride.pickup}
+      dropoff={ride.dropoff}
+      driver={ride.driverLocation}
+      routeCoords={routeLatLngs}
+      shouldFit={true}
+    />
+  );
+
+  // Bottom sheet content
+  const sheetContent = (
+    <div>
+      <h2 style={{ marginBottom: '16px', fontSize: '1.5rem', fontWeight: '600' }}>Ride Status</h2>
 
         {/* Trip Card */}
         <TripCard
@@ -688,28 +695,6 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry, runtimeFlags 
           </div>
         )}
 
-        {/* Map - show when ride has coordinates and driver is assigned */}
-        {ride.pickup && ride.dropoff && ['accepted', 'started', 'in_progress'].includes(ride.status) && (
-          <div
-            style={{
-              height: '350px',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              marginBottom: '16px',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}
-          >
-            <SharedMap
-              pickup={ride.pickup}
-              dropoff={ride.dropoff}
-              driver={driverLocation}
-              routeCoords={routeLatLngs}
-              shouldFit={true}
-              fitKey={routeKey}
-            />
-          </div>
-        )}
-
         {/* Status Timeline */}
         <div className="timeline-container" style={{ marginBottom: '24px' }}>
           <div className="timeline">
@@ -855,7 +840,17 @@ export function RideStatus({ rideId, onRideCompleted, onRideRetry, runtimeFlags 
         <div style={{ marginTop: '24px' }}>
           <RideTimeline key={rideId} rideId={rideId} />
         </div>
-      </div>
     </div>
+  );
+
+  return (
+    <CustomerMapShell
+      mapContent={mapContent}
+      bottomSheetContent={
+        <CustomerBottomSheet defaultSnap="collapsed">
+          {sheetContent}
+        </CustomerBottomSheet>
+      }
+    />
   );
 }

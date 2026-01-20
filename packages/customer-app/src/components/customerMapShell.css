@@ -1,0 +1,36 @@
+/* Customer Map Shell - Full screen map with overlay sheet */
+
+.customer-map-shell {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100dvh;
+  height: -webkit-fill-available;
+  width: 100%;
+  overflow: hidden;
+  background: #0b1220;
+  z-index: 1;
+}
+
+/* Map fills entire screen */
+.customer-map-shell .map-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+/* Bottom sheet floats above */
+.customer-map-shell .bottom-sheet-layer {
+  position: relative;
+  z-index: 100;
+  pointer-events: none; /* Let touches pass through to map */
+}
+
+.customer-map-shell .bottom-sheet-layer > * {
+  pointer-events: auto; /* Re-enable for actual sheet */
+}

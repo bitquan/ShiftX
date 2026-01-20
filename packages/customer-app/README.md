@@ -1,14 +1,239 @@
-# Customer App MVP - Complete Implementation Summary
+# ShiftX Customer App
+
+Production-ready customer web app for requesting and tracking rides. Built with React, TypeScript, and Firebase.
+
+## 🚖 Features
+
+- **Ride Requests** - Tap map or use address autocomplete
+- **Real-time Tracking** - Live driver location during rides
+- **Payment Integration** - Stripe payment authorization
+- **Ride History** - View past rides with receipts
+- **Request Again** - Rebook previous trips with one click
+- **Address Autocomplete** - Search for pickup/dropoff locations
+- **Visual Timeline** - Real-time ride status updates
+
+## 🏗️ Tech Stack
+
+- **Frontend:** React 18.3 + TypeScript 5.3
+- **Build Tool:** Vite 5.0
+- **Maps:** Leaflet 1.9.4 + React Leaflet 4.x
+- **Routing:** OSRM (Open Source Routing Machine)
+- **Backend:** Firebase (Auth, Firestore, Functions)
+- **Payments:** Stripe Payment Elements
+- **Real-time:** Firestore snapshots (onSnapshot)
+
+## 📦 Setup
+
+### Prerequisites
+
+- Node.js 18+ (LTS recommended)
+- npm 9+
+- Firebase CLI (`npm install -g firebase-tools`)
+
+### Install Dependencies
+
+```bash
+cd packages/customer-app
+npm install
+```
+
+### Environment Variables
+
+Create `.env` file:
+
+```bash
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=your-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
+
+# Stripe Configuration
+VITE_STRIPE_PUBLISHABLE_KEY_TEST=pk_test_xxxxx
+VITE_STRIPE_PUBLISHABLE_KEY_LIVE=pk_live_xxxxx
+
+# Optional Feature Flags
+VITE_ENABLE_ANALYTICS=false
+VITE_ENABLE_DEBUG=false
+```
+
+**See [docs/ENVIRONMENT_VARIABLES.md](../../docs/ENVIRONMENT_VARIABLES.md) for complete reference.**
+
+## 🚀 Development
+
+```bash
+npm run dev
+```
+
+App runs at: http://localhost:5173
+
+## 🏗️ Build
+
+### Production Build
+
+```bash
+npm run build
+```
+
+Output: `dist/`
+
+### Preview Build
+
+```bash
+npm run preview  # Port 4173
+```
+
+### Deploy to Firebase
+
+```bash
+# Build first
+npm run build
+
+# Deploy
+firebase deploy --only hosting:customer
+```
+
+## 📂 Project Structure
+
+```
+customer-app/
+├── src/
+│   ├── components/          # React components
+│   │   ├── AuthGate.tsx    # Authentication
+│   │   ├── RequestRide.tsx # Booking with map
+│   │   ├── RideStatus.tsx  # Real-time tracking
+│   │   ├── PaymentAuthorize.tsx
+│   │   ├── RideTimeline.tsx
+│   │   ├── RideHistory.tsx
+│   │   └── SharedMap.tsx   # Leaflet map
+│   ├── hooks/              # Custom React hooks
+│   ├── App.tsx             # Root component
+│   ├── firebase.ts         # Firebase config
+│   ├── styles.css          # Global styles
+│   └── main.tsx            # Entry point
+├── public/                 # Static assets
+├── vite.config.ts          # Vite config
+└── tsconfig.json           # TypeScript config
+```
+
+## 🔑 Key Features
+
+### Real-time Ride Tracking
+
+Rides update in real-time using Firestore listeners:
+```typescript
+// Automatically updates UI when ride changes
+onSnapshot(doc(db, 'rides', rideId), (snapshot) => {
+  const ride = snapshot.data();
+  // Update UI with new ride status
+});
+```
+
+### Payment Authorization
+
+Customer authorizes payment before driver starts ride:
+1. Request ride → Payment Intent created
+2. Enter payment details → Authorize (hold funds)
+3. Driver completes ride → Capture payment
+
+### Route Polylines
+
+All routes use OSRM for road-following paths:
+- Debounced fetching (250ms)
+- Memoized by pickup/dropoff
+- Fallback to straight line on error
+
+## 🧪 Testing
+
+### Manual Testing
+
+1. **Sign Up** - Create account with email/password
+2. **Request Ride** - Enter pickup/dropoff, see price estimate
+3. **Authorize Payment** - Enter test card: `4242 4242 4242 4242`
+4. **Track Ride** - Watch real-time status updates
+5. **View Receipt** - Check ride history after completion
+
+### Test Cards (Stripe)
+
+- **Success:** `4242 4242 4242 4242`
+- **Decline:** `4000 0000 0000 0002`
+- **Require 3DS:** `4000 0025 0000 3155`
+
+### Emulator Testing
+
+```bash
+# Start Firebase emulators
+firebase emulators:start --only auth,firestore,functions
+
+# In another terminal, start dev server
+npm run dev
+```
+
+## 📱 Browser Support
+
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
+
+## 🐛 Troubleshooting
+
+### Issue: Firebase not connecting
+
+**Solution:** Verify `.env` file has all required variables with `VITE_` prefix
+
+### Issue: Stripe payment fails
+
+**Solution:** Check you're using test mode key (`pk_test_*`) in development
+
+### Issue: Map not loading
+
+**Solution:** Clear cache and reload: `rm -rf node_modules/.vite && npm run dev`
+
+### Issue: Real-time updates not working
+
+**Solution:** Check Firestore rules allow read access for authenticated users
+
+## 📚 Documentation
+
+- **[CUSTOMER_APP.md](../../docs/CUSTOMER_APP.md)** - Complete feature and architecture docs
+- **[DEPLOYMENT.md](../../docs/DEPLOYMENT.md)** - Production deployment guide
+- **[SETUP.md](../../docs/SETUP.md)** - Development setup
+- **[FIREBASE.md](../../docs/FIREBASE.md)** - Firestore structure reference
+
+## 🎨 Customization
+
+### Theme Colors
+
+Edit `src/styles.css`:
+```css
+:root {
+  --primary-color: #60a5fa;  /* Blue */
+  --success-color: #10b981;  /* Green */
+  --danger-color: #ef4444;   /* Red */
+}
+```
+
+### Map Tiles
+
+Change map provider in `SharedMap.tsx`:
+```typescript
+<TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+```
+
+---
 
 **Status**: ✅ COMPLETE & READY FOR TESTING
-**Date**: December 31, 2025
-**Build**: ✓ No TypeScript errors, builds successfully
-**Firebase Setup**: ✓ Single instance verified
+**Date**: December 31, 2025  
+**Build**: ✓ No TypeScript errors, builds successfully  
+**Firebase Setup**: ✓ Single instance verified  
 **Test Coverage**: 60+ manual test cases documented
 
 ---
 
-## Executive Summary
+## Complete Implementation Details
 
 The Customer App MVP has been fully implemented with all requested features:
 
